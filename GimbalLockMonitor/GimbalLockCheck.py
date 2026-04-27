@@ -1,10 +1,28 @@
-"""
-By Remaniuk Mykyta
-Version: PB 1.0
-Date: 22/04/2026
-Artstation: https://www.artstation.com/drendika
-"""
-
+# rmGimbalMonitor
+# Version: PB 1.0
+# Date: 22/04/2026
+#
+# By Remaniuk Mykyta aka Drendika
+# Links: Artstation - https://www.artstation.com/drendika | Mail - drendika23@gmail.com
+#
+# -̶-̶-̶-̶-̶|Installation|-̶-̶-̶-̶-̶
+#
+#
+#
+# -̶-̶-̶-̶-̶|Description|-̶-̶-̶-̶-̶
+# A script for monitoring gimbal lock of the selected object in real time using inViewMessage system.
+# Just a proof of concept to myself;)
+# There will be much more in the future!
+# I would be happy to hear any advice or suggestions. Thanks!
+#
+# -̶-̶-̶-̶-̶|Usage|-̶-̶-̶-̶-̶
+# Select an object and start gimbal monitor with new button on your shelf or use the code:
+#
+#               from GimbalLockMonitor import GimbalLockCheck
+#               GimbalLockCheck.toggleGimbalMonitor()
+#
+# To stop gimbal monitor, simply press button on the shelf second time, or use given code.
+#-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶-̶
 
 import math
 import maya.cmds as cmds
@@ -181,5 +199,3 @@ def stopGimbalMonitor():
         fontSize=13,
         fade=True
     )
-
-toggleGimbalMonitor()
