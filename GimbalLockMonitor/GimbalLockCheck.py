@@ -2,7 +2,7 @@
 By Remaniuk Mykyta
 Version: PB 1.0
 Date: 22/04/2026
-Links:
+Artstation: https://www.artstation.com/drendika
 """
 
 
