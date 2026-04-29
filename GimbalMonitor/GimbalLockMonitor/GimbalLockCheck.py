@@ -3,7 +3,9 @@
 # Date: 22/04/2026
 #
 # By Remaniuk Mykyta aka Drendika
-# Links: Artstation - https://www.artstation.com/drendika | Mail - drendika23@gmail.com
+# Links: Artstation - https://www.artstation.com/drendika
+#        Mail - drendika23@gmail.com
+#        LinkedIn -
 #
 # -̶-̶-̶-̶-̶|Installation|-̶-̶-̶-̶-̶
 #
