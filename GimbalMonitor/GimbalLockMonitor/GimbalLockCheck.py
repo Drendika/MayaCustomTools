@@ -3,22 +3,23 @@
 # Date: 22/04/2026
 #
 # By Remaniuk Mykyta aka Drendika
-# Links: Artstation - https://www.artstation.com/drendika
+# Links: Artstation - www.artstation.com/drendika
 #        Mail - drendika23@gmail.com
-#        LinkedIn -
+#        LinkedIn - www.linkedin.com/in/remaniuk-mykyta
 #
 # -̶-̶-̶-̶-̶|Installation|-̶-̶-̶-̶-̶
-#
-#
+#  1) Drag and drop into Maya file "Drag&Drop Install".
+#  2) Done!
 #
 # -̶-̶-̶-̶-̶|Description|-̶-̶-̶-̶-̶
 # A script for monitoring gimbal lock of the selected object in real time using inViewMessage system.
 # Just a proof of concept to myself;)
 # There will be much more in the future!
 # I would be happy to hear any advice or suggestions. Thanks!
+# If there is any problem, feel free to write me on any given socials.
 #
 # -̶-̶-̶-̶-̶|Usage|-̶-̶-̶-̶-̶
-# Select an object and start gimbal monitor with new button on your shelf or use the code:
+# Select an object and start gimbal monitor with new button on your shelf or use this code:
 #
 #               from GimbalLockMonitor import GimbalLockCheck
 #               GimbalLockCheck.toggleGimbalMonitor()

@@ -1,0 +1,2 @@
+from GimbalMonitor.GimbalLockMonitor import GimbalLockCheck
+GimbalLockCheck.toggleGimbalMonitor()
