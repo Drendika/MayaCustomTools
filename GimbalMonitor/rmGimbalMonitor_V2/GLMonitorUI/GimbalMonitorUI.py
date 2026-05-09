@@ -1,5 +1,5 @@
 #
-# from rmGimbalMonitor_V2.GLMonitorUI import GimbalMonitorUI
+# from GimbalMonitor.rmGimbalMonitor_V2.GLMonitorUI import GimbalMonitorUI
 # from importlib import reload
 # reload(GimbalMonitorUI)
 #
