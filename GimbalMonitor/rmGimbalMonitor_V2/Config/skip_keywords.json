@@ -1,0 +1,7 @@
+[
+	"main", "global", "master", "root_ctrl", "world",
+	"pv", "pole", "polevector", "pole_vector",
+	"ikfk", "ik_fk", "switch", "settings",
+	"space", "follow",
+	"vis", "visibility"
+]

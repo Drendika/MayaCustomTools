@@ -1,0 +1,7 @@
+{
+    "Head": ["head", "neck", "jaw", "eye", "face", "ear"],
+    "Spine": ["spine", "chest", "pelvis", "hip", "torso", "waist", "root"],
+    "Arms": ["arm", "shoulder", "clavicle", "elbow", "hand", "wrist", "finger", "thumb", "scapula"],
+    "Legs": ["leg", "thigh", "knee", "foot", "ankle", "toe", "ball", "heel"],
+    "Accessories": ["prop", "weapon", "cloth", "hair", "cape", "bag", "tail"]
+}
