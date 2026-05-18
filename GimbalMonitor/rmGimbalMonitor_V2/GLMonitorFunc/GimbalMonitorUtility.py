@@ -74,6 +74,7 @@ def categorizeAllControls(controls):
     grouped = {group: [] for group in CATEGORY_MAP}
     grouped["Other"] = []
 
+
     for ctrl in controls:
         if shouldSkipControl(ctrl):
             continue
