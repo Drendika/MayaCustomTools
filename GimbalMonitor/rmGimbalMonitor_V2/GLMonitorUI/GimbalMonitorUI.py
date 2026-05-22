@@ -143,53 +143,48 @@ class GroupDelegate(QStyledItemDelegate):
 
         painter.restore()
 
-
-# Gemini what fuck? Ahh...
+# Isn't this code great? Especially after a couple of hours fixing all the shit that Gemini generates😊😊
 class GimbalDelegate(QStyledItemDelegate):
     def paint(self, painter, option, index):
         # Ensure we only paint the Gimbal Lock column
         if index.column() != 3:
             super().paint(painter, option, index)
             return
+        print(f"Column 3 width: {option.rect.width()}")
 
         # Extract the percentage data we stored in the model
         percentData = index.data(Qt.UserRole)
         if percentData is None:
             return
 
-        percent = float(percentData)
         rect = option.rect
 
-        # 2. Determine Color Thresholds based on draft sketch
-        if percent < 30:
+        # Color
+        if percentData < 30:
             color = QColor(0, 255, 0)  # Green
-        elif percent < 50:
+        elif percentData < 50:
             color = QColor(255, 255, 0)  # Yellow
-        elif percent < 80:
+        elif percentData < 80:
             color = QColor(255, 140, 0)  # Orange
         else:
             color = QColor(255, 0, 0)  # Red
 
         painter.save()
 
-        # 3. Draw Percentage Text (Left side)
-        textRect = QRect(rect.x() + 5, rect.y(), 35, rect.height())
+        # Percentage text
+        textRect = QRect(rect.x() + 5, rect.y(), 45, rect.height())
         painter.setPen(color)
         font = painter.font()
+        font.setPointSize(10)
         font.setBold(True)
         painter.setFont(font)
-        painter.drawText(textRect, Qt.AlignRight | Qt.AlignVCenter, f"{int(percent)} %")
+        painter.drawText(textRect, Qt.AlignRight | Qt.AlignVCenter, f"{percentData:.1f} %")
 
-        # 4. Draw Progress Bar (Middle)
+        # Progress Bar
         barX = textRect.x() + textRect.width() + 10
         barY = rect.y() + (rect.height() - 14) // 2
         barWidth = rect.width() - 80 # Scale bar to leave room for text and warning icon
         barHeight = 14
-
-        if barWidth > 0:  # ← conditional, not early return
-            painter.setPen(QColor(0, 0, 0))
-            painter.setBrush(QColor(255, 255, 255))
-            painter.drawRect(barX, barY, barWidth, barHeight)
 
         # Draw empty background box
         painter.setPen(QColor(0, 0, 0))
@@ -197,8 +192,8 @@ class GimbalDelegate(QStyledItemDelegate):
         painter.drawRect(barX, barY, barWidth, barHeight)
 
         # Draw filled amount
-        if percent > 0:
-            fillWidth = int(barWidth * (min(percent, 100.0) / 100.0))
+        if percentData > 0:
+            fillWidth = int(barWidth * (min(percentData, 100.0) / 100.0))
             painter.setPen(Qt.NoPen)
             painter.setBrush(color)
             painter.drawRect(barX + 1, barY + 1, fillWidth - 1, barHeight - 1)
@@ -208,15 +203,16 @@ class GimbalDelegate(QStyledItemDelegate):
             painter.setBrush(Qt.NoBrush)
             painter.drawRect(barX, barY, barWidth, barHeight)
 
-        # 5. Draw Warning Icon (Right side)
-        if percent >= 80:
-            warnRect = QRect(barX + barWidth + 8, rect.y(), 20, rect.height())
+        warnRect = QRect(barX + barWidth + 4, rect.y(), 20, rect.height())
+
+        # Warning Icon
+        if percentData >= 80:
             painter.setPen(QColor(255, 0, 0))
             warnFont = painter.font()
-            warnFont.setPointSize(14)
+            warnFont.setPointSize(25)
             warnFont.setBold(True)
             painter.setFont(warnFont)
-            painter.drawText(warnRect, Qt.AlignLeft | Qt.AlignVCenter, "!")
+            painter.drawText(warnRect, Qt.AlignLeft | Qt.AlignTop, "!")
 
         painter.restore()
 
