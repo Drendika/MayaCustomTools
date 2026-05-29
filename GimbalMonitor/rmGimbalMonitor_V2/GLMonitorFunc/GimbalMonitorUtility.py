@@ -5,7 +5,6 @@ import math
 import os
 
 
-
 rotationOrders = {
     0: ("XYZ", "y"),
     1: ("YZX", "z"),
@@ -64,7 +63,8 @@ CATEGORY_MAP = loadConfig("category_map.json")
 SKIP_KEYWORDS = loadConfig("skip_keywords.json")
 
 def shouldSkipControl(ctrl):
-    ctrl_lower = ctrl.lower()
+    onlyName = ctrl.split(":")[-1].split("|")[-1]
+    ctrl_lower = onlyName.lower()
     if any(keyword in ctrl_lower for keyword in SKIP_KEYWORDS):
         return True
     return False

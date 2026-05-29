@@ -4,7 +4,7 @@ from PySide2.QtWidgets import *
 import maya.cmds as cmds
 from GimbalMonitor.rmGimbalMonitor_V2.GLMonitorFunc import GimbalMonitorUtility
 
-print("Working")
+CURRENT_VERSION = "1.0.0"
 
 GROUP_ICONS = {
     "Head":        r"D:\rigging_tools\scripts\GimbalMonitor\rmGimbalMonitor_V2\icons\Head.png",
@@ -23,16 +23,154 @@ def mayaWindow():
     import shiboken2
     return shiboken2.wrapInstance(int(MQtUtil.mainWindow()), QMainWindow)
 
+class AppInit(QMainWindow):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        central = QWidget()
+        self.setCentralWidget(central)
+        central.setFocusPolicy(Qt.ClickFocus)
+        characterVerticalLayout = QVBoxLayout(central)
 
-def buildControlModel():
+        self.setWindowTitle("rmGimbalMonitor_V2_DevBuild_02")
+        self.setMinimumSize(650, 600)
+
+        self.stackedWidget = QStackedWidget()
+
+        self.setUp = AppSetUp(ref=self)
+        self.app = App
+
+        self.stackedWidget.addWidget(self.setUp)  # index 0
+        self.stackedWidget.setCurrentIndex(0)
+
+        characterVerticalLayout.addWidget(self.stackedWidget)
+
+    def onInitialize(self):
+        shapes = cmds.ls(type="nurbsCurve", long=True)
+
+        if not shapes:
+            self.setUp.unInitLabel.setText("No controls found in scene.")
+            return
+
+        characters = self.setUp.getValidEntries()
+        if not characters:
+            self.setUp.unInitLabel.setText("Please select at least one character.")
+            return
+
+        # switch to initialized page
+        self.app = App(characters=characters)
+        self.stackedWidget.addWidget(self.app)  # index 1
+        self.stackedWidget.setCurrentIndex(1)
+
+class AppSetUp(QWidget):
+    def __init__(self, ref, parent=None):
+        super().__init__(parent)
+        self.AppInitInstance = ref
+        self.characterEntries = []
+        mainLayout = QVBoxLayout(self)
+
+        # Title
+        title = QLabel("Choose characters")
+        title.setAlignment(Qt.AlignCenter)
+        mainLayout.addWidget(title)
+
+        # Scrollable area for character entries (in case many are added)
+        self.entriesLayout = QVBoxLayout()
+        self.entriesLayout.setAlignment(Qt.AlignTop)
+        mainLayout.addLayout(self.entriesLayout)
+
+        # Start with one empty entry
+        self._addEntry()
+
+        # Add character button
+        addBtn = QPushButton("Add character")
+        addBtn.clicked.connect(self._addEntry)
+        mainLayout.addWidget(addBtn, alignment=Qt.AlignLeft)
+
+        mainLayout.addStretch(1)
+
+        # Status label + Initialize button
+        self.unInitLabel = QLabel("Scene not initialized for Gimbal monitoring.")
+        self.unInitLabel.setAlignment(Qt.AlignCenter)
+        mainLayout.addWidget(self.unInitLabel)
+
+        initButton = QPushButton("Initialize Gimbal Monitor")
+        initButton.clicked.connect(self.AppInitInstance.onInitialize)
+        mainLayout.addWidget(initButton)
+
+    def _addEntry(self):
+        entry = CharacterEntry()
+        self.characterEntries.append(entry)
+        self.entriesLayout.addWidget(entry)
+
+    def getValidEntries(self):
+        """Returns a list of (name, type) for all filled entries."""
+        results = []
+        for entry in self.characterEntries:
+            data = entry.getData()
+            if data:
+                results.append(data)
+        return results
+
+class CharacterEntry(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.controls =[]
+
+        mainLayout = QVBoxLayout(self)
+        mainLayout.setContentsMargins(0, 4, 0, 4)
+
+        # Row 1: Select button + Name field
+        nameRow = QHBoxLayout()
+        self.selectBtn = QPushButton("Select")
+        self.selectBtn.setFixedWidth(60)
+        self.nameField = QLineEdit()
+        self.nameField.setPlaceholderText("Name of the character")
+        nameRow.addWidget(self.selectBtn)
+        nameRow.addWidget(self.nameField)
+        mainLayout.addLayout(nameRow)
+
+        # Row 2: Type dropdown — indented to align under the name field
+        typeRow = QHBoxLayout()
+        typeRow.addSpacing(66)
+        self.typeCombo = QComboBox()
+        self.typeCombo.addItems(["Bipedal", "Quadrupedal"])
+        typeRow.addWidget(self.typeCombo)
+        mainLayout.addLayout(typeRow)
+
+        self.selectBtn.clicked.connect(self.onSelect)
+
+    def onSelect(self):
+        sel = cmds.ls(sl=True, long=True)
+        if not sel:
+            return
+
+        curves = cmds.listRelatives(sel, allDescendents=True, type="nurbsCurve", fullPath=True)
+        if curves:
+            transforms = cmds.listRelatives(curves, parent=True, fullPath=True) or []
+
+        alreadyAdded = set()
+        self.controls = []
+        for transform in transforms:
+            if transform not in alreadyAdded:
+                alreadyAdded.add(transform)
+                self.controls.append(transform)
+
+        shortName = sel[0].split("|")[-1]
+        self.nameField.setText(shortName)
+
+    def getData(self):
+        """Returns (name, type, controls) for this entry, or None if name is empty."""
+        name = self.nameField.text().strip()
+        charType = self.typeCombo.currentText()
+        if name:
+            return (name, charType, self.controls)
+        return None
+
+def buildControlModel(transforms):
     # Create the source data storage
     model = QStandardItemModel()
     model.setHorizontalHeaderLabels(["Group", "Name", "Rotation Order", "Gimbal Lock"])
 
-    # Gather raw shapes from the Maya scene
-    shapes = cmds.ls(type="nurbsCurve", long=True)
-    # Get the unique parents of those shapes
-    transforms = cmds.listRelatives(shapes, parent=True, fullPath=True) if shapes else []
     # Filter and categorize using the utilities module
     grouped = GimbalMonitorUtility.categorizeAllControls(transforms)
 
@@ -53,7 +191,7 @@ def buildControlModel():
             # Query utils data values for each control item
             percent, rotationOrder = GimbalMonitorUtility.getGimbalLockPercent(ctrl)
 
-            onlyName = ctrl.split("|")[-1] # short name of the control (not a full path) for displaying.
+            onlyName = ctrl.split(":")[-1].split("|")[-1] # short name of the control (not a full path) for displaying.
             # Wrap strings into QStandardItem instances for column formatting
             itemGroup = QStandardItem(groupName)
             # Sets the flags for the group cells
@@ -70,11 +208,9 @@ def buildControlModel():
             # Rotation order column
             itemRotationOrder = QStandardItem(rotationOrder)
             itemRotationOrder.setTextAlignment(Qt.AlignCenter)
-            flagsItemRotationOrder = itemRotationOrder.flags()
-            itemRotationOrder.setFlags(flagsItemRotationOrder & ~Qt.ItemIsSelectable & ~Qt.ItemIsEditable)
+            itemRotationOrder.setFlags(itemRotationOrder.flags() & ~Qt.ItemIsSelectable & ~Qt.ItemIsEditable)
 
             itemGimbalLock = QStandardItem()
-
             itemGimbalLock.setData(percent, Qt.UserRole)
             flagsItemGimbalLock = itemGimbalLock.flags()
             itemGimbalLock.setFlags(flagsItemGimbalLock & ~Qt.ItemIsSelectable & ~Qt.ItemIsEditable)
@@ -86,11 +222,40 @@ def buildControlModel():
 
     return model, spans
 
-
 class ControlFilterProxyModel(QSortFilterProxyModel):
     def __init__(self, parent=None):
         super().__init__(parent)
-        pass
+        self.filterText = ""
+
+    def setFilterText(self, text):
+        self.filterText = text.lower().strip()
+        self.invalidateFilter()  # tells Qt to re-check every row
+
+    def filterAcceptsRow(self, sourceRow, sourceParent):
+        if not self.filterText:
+            return True  # empty search = show everything
+
+        model = self.sourceModel()
+
+        groupText  = model.data(model.index(sourceRow, 0, sourceParent), Qt.DisplayRole) or ""
+        nameText   = model.data(model.index(sourceRow, 1, sourceParent), Qt.DisplayRole) or ""
+        percentData = model.data(model.index(sourceRow, 3, sourceParent), Qt.UserRole)
+
+        # Filter by group or control name
+        if self.filterText in groupText.lower() or self.filterText in nameText.lower():
+            return True
+
+        # Filter by percent >80 <30
+        if percentData is not None:
+            try:
+                if self.filterText.startswith(">"):
+                    return float(percentData) > float(self.filterText[1:])
+                elif self.filterText.startswith("<"):
+                    return float(percentData) < float(self.filterText[1:])
+            except ValueError:
+                pass
+
+        return False
 
 class GroupDelegate(QStyledItemDelegate):
     """
@@ -143,14 +308,94 @@ class GroupDelegate(QStyledItemDelegate):
 
         painter.restore()
 
-# Isn't this code great? Especially after a couple of hours fixing all the shit that Gemini generates😊😊
+class RotationOrderDelegate(QStyledItemDelegate):
+    def __init__(self, sourceModel, parent=None):
+        super().__init__(parent)
+        self.arrowIcon = QPixmap(":/arrowDown.png")
+        self._sourceModel = sourceModel
+        self.rotation_orders = ["XYZ", "YZX", "ZXY", "XZY", "YXZ", "ZYX"]
+
+    def paint(self, painter, option, index):
+        if index.column() != 2:
+            super().paint(painter, option, index)
+            return
+
+        painter.save()
+
+        text = index.data(Qt.DisplayRole) or ""
+        rect = option.rect
+
+        # Measure how wide the text actually is in pixels
+        fontMetrics = painter.fontMetrics()
+        textWidth = fontMetrics.horizontalAdvance(text)
+        textHeight = fontMetrics.height()
+
+        iconWidth = 13
+        iconHeight = 8
+        gap = 6
+
+        totalWidth = textWidth + gap + iconWidth
+
+        startX = rect.x() + (rect.width() - totalWidth) // 2
+        textY = rect.y() + (rect.height() - textHeight) // 2
+        iconY = rect.y() + (rect.height() - iconHeight) // 2
+
+        textRect = QRect(startX, textY, textWidth, textHeight)
+        painter.drawText(textRect, Qt.AlignLeft | Qt.AlignVCenter, text)
+
+        iconX = startX + textWidth + gap
+        painter.drawPixmap(iconX, iconY, self.arrowIcon.scaled(iconWidth, iconHeight))
+
+        painter.restore()
+
+    def editorEvent(self, event, model, option, index):
+        if index.column() != 2:
+            return False
+
+        # Only react to left mouse click
+        if event.type() != QEvent.MouseButtonPress or event.button() != Qt.LeftButton:
+            return False
+
+        # Build and show the dropdown menu at the bottom of the cell
+        menu = QMenu()
+        for rotation_order in self.rotation_orders:
+            menu.addAction(rotation_order)
+
+        globalPos = option.widget.mapToGlobal(option.rect.bottomLeft())
+        chosen = menu.exec_(globalPos)
+
+        if chosen:
+            selectedRO = chosen.text()
+            roIndex = self.rotation_orders.index(selectedRO)
+
+            # Map proxy index to source index
+            sourceIndex = model.mapToSource(index)
+            nameItem = self._sourceModel.item(sourceIndex.row(), 1)
+            if not nameItem:
+                return True
+
+            fullPath = nameItem.data(Qt.UserRole)
+            if not fullPath or not cmds.objExists(fullPath):
+                return True
+
+            try:
+                cmds.setAttr(f"{fullPath}.rotateOrder", roIndex)
+
+                roItem = self._sourceModel.item(sourceIndex.row(), 2)
+                if roItem:
+                    roItem.setText(selectedRO)
+
+            except Exception as e:
+                cmds.warning(f"Failed to set rotation order: {e}")
+
+        return True  # tells Qt "I handled this click, don't do anything else"
+
 class GimbalDelegate(QStyledItemDelegate):
     def paint(self, painter, option, index):
         # Ensure we only paint the Gimbal Lock column
         if index.column() != 3:
             super().paint(painter, option, index)
             return
-        print(f"Column 3 width: {option.rect.width()}")
 
         # Extract the percentage data we stored in the model
         percentData = index.data(Qt.UserRole)
@@ -216,35 +461,15 @@ class GimbalDelegate(QStyledItemDelegate):
 
         painter.restore()
 
-class App(QMainWindow):
-    def __init__(self, parent=None):
+class App(QWidget):
+    def __init__(self, characters=None, parent=None):
         super().__init__(parent)
-        self.num = 1
+        self.missingControls = set() # This is for warning in the updateGimbalData
+        self.tubNumber = len(characters) if characters else 1
 
-        central = QWidget()
-        self.setCentralWidget(central)
-        central.setFocusPolicy(Qt.ClickFocus)
+        self.setFocusPolicy(Qt.ClickFocus)
+        verticalLayoutMain = QVBoxLayout(self)
 
-        self.setWindowTitle("rmGimbalMonitor_V2_DevBuild_02")
-        self.setMinimumSize(650, 600)
-
-        verticalLayoutMain = QVBoxLayout(central)
-
-        # Tabs
-
-        self.tabs = QTabWidget()
-        characterTab = QWidget()
-        characterVerticalLayout = QVBoxLayout(characterTab)
-        self.tabs.addTab(characterTab, "Character_01")
-
-        self.tabs.setTabsClosable(True)  # allows removing tabs
-        self.tabs.tabCloseRequested.connect(self.removeCharacterTab)
-
-        addTabButton = QPushButton("+")
-        addTabButton.clicked.connect(self.addCharacterTab)
-        self.tabs.setCornerWidget(addTabButton)  # places button at top right of tabs
-
-        verticalLayoutMain.addWidget(self.tabs)
 
         # Search box area
         verticalLayoutSearchBox = QVBoxLayout()
@@ -253,8 +478,9 @@ class App(QMainWindow):
         verticalLayoutSearchBox.addLayout(horizontalLayoutSearchBox)
         searchBox = QLineEdit()
         searchBox.setPlaceholderText("SearchBox")
-        searchBox.setMinimumWidth(250)
+        searchBox.setMinimumSize(250, 27)
         horizontalLayoutSearchBox.addWidget(searchBox)
+
 
         # Help button
 
@@ -270,43 +496,163 @@ class App(QMainWindow):
         self.helpMenu.addAction("About")
         self. helpButton.setMenu(self.helpMenu)
 
+        # Tabs
 
+        self.tabs = QTabWidget()
+        verticalLayoutMain.addWidget(self.tabs)
+        self.tabData = {}
 
-        # Table
+        if characters:
+            for name, charType, controls in characters:
+                tab = QWidget()
+                tabLayout = QVBoxLayout(tab)
+                self.tabs.addTab(tab, name)
+                # store charType on the tab widget for future use
+                tab.setProperty("charType", charType)
 
-        self.index = self.tabs.currentIndex()
-        self.tabs.currentChanged.connect(self.onTabChanged)
+                sourceModel, spans = buildControlModel(controls)  # ← pass this character's controls
+                self._buildTabContent(tabLayout, sourceModel, spans, searchBox)
+        else:
+            #
+            tab = QWidget()
+            tabLayout = QVBoxLayout(tab)
+            self.tabs.addTab(tab, "Character_01")
+            sourceModel, spans = buildControlModel([])
+            self._buildTabContent(tabLayout, sourceModel, spans, searchBox)
 
-        sourceModel, spans = buildControlModel()
+        # live updates
+        self.timer = QTimer()
+        self.timer.setInterval(100)
+        self.timer.timeout.connect(self.updateGimbalData)
+        for idx, data in self.tabData.items():
+            p, v = data["proxy"], data["view"]
+            self.timer.timeout.connect(lambda p=p, v=v: self.reapplySpans(p, v))
+        self.timer.start()
 
-        sourceModel.dataChanged.connect(self.onControlRenamed)
-
+    def _buildTabContent(self, tabLayout, sourceModel, spans, searchBox):
         proxy = ControlFilterProxyModel()
         proxy.setSourceModel(sourceModel)
+        searchBox.textChanged.connect(proxy.setFilterText)
 
+        # Table
         view = QTableView()
         view.verticalHeader().hide()
         view.verticalHeader().setDefaultSectionSize(45)
-        characterVerticalLayout.addWidget(view)
         view.setModel(proxy)
         view.setSortingEnabled(False)
         view.resizeColumnsToContents()
         view.horizontalHeader().setSectionResizeMode(3, QHeaderView.Stretch)
-
+        view.setSelectionMode(QAbstractItemView.ExtendedSelection)
+        view.setSelectionBehavior(QAbstractItemView.SelectRows)
         view.horizontalHeader().setSectionResizeMode(0, QHeaderView.Fixed)
-        view.setColumnWidth(0, 74)
+        view.setColumnWidth(0, 80)
 
-        # apply group spans
+        # Sets spans for group column when table is created
         for startRow, rowCount in spans:
             if rowCount > 1:
                 view.setSpan(startRow, 0, rowCount, 1)
+        # Updates the spans when the view (proxy model) changes (used search to hide/show rows)
+        searchBox.textChanged.connect(lambda _, p=proxy, v=view: self.reapplySpans(p, v))
 
-        self.groupDelegate = GroupDelegate()
-        self.gimbalDelegate = GimbalDelegate()
-        view.setItemDelegateForColumn(0, self.groupDelegate)
-        view.setItemDelegateForColumn(3, self.gimbalDelegate)
+        # Delegates
+        groupDelegate = GroupDelegate()
+        gimbalDelegate = GimbalDelegate()
+        rotationOrderDelegate = RotationOrderDelegate(sourceModel)
+        view.setItemDelegateForColumn(0, groupDelegate)
+        view.setItemDelegateForColumn(2,  rotationOrderDelegate)
+        view.setItemDelegateForColumn(3, gimbalDelegate)
 
-    def onControlRenamed(self, topLeft, bottomRight, roles):
+        sourceModel.dataChanged.connect(lambda topLeft, bottomRight, roles, sm=sourceModel: self.onControlRenamed(topLeft, bottomRight, roles, sm))
+        tabLayout.addWidget(view)
+
+        # Save references so timer and other methods can reach them by tab index
+        tabIndex = self.tabs.count() - 1
+        # count() return the total number of tabs. If we have 3 tabs in total, and we want to switch to third tab, 3 - 1 = 2
+        # Indices start at 0 = first tab;  1 - 1 = 0
+        #                   1 = second tab; 2 - 1 = 1
+        #                   2 = third tab;  3 - 1 = 2
+        # Please, don't tell me that this is basic, it's my first month of learning PyQt.
+
+        self.tabData[tabIndex] = {
+            "model": sourceModel,
+            "proxy": proxy,
+            "view": view,
+            "delegates": [groupDelegate, gimbalDelegate, rotationOrderDelegate]
+        }
+
+        # auto resize name column
+        fontMetrics = view.fontMetrics()
+        maxWidth = 0
+
+        for row in range(sourceModel.rowCount()):
+            name = sourceModel.item(row, 1).text()
+            width = fontMetrics.horizontalAdvance(name)
+            if width > maxWidth:
+                maxWidth = width
+        view.setColumnWidth(1, maxWidth + 10) # + 10 is a padding
+
+
+    def reapplySpans(self, proxy, view):
+        """
+        Reapplies spans for group column
+
+        Args:
+            proxy: proxy model for recomputing visible rows.
+
+            view: sets the span for rows in the table
+        """
+        # Reset all existing spans first to start fresh
+        for row in range(proxy.rowCount()):
+            view.setSpan(row, 0, 1, 1)
+
+        # Recompute spans based on current visible proxy rows
+        currentGroup = None
+        groupStart = 0
+
+        for proxyRow in range(proxy.rowCount()):
+            group = proxy.data(proxy.index(proxyRow, 0), Qt.DisplayRole)
+
+            if group != currentGroup:
+                # Apply span for the previous group
+                if currentGroup is not None and proxyRow - groupStart > 1:
+                    view.setSpan(groupStart, 0, proxyRow - groupStart, 1)
+                currentGroup = group
+                groupStart = proxyRow
+
+        # Apply span for the last group
+        total = proxy.rowCount()
+        if currentGroup is not None and total - groupStart > 1:
+            view.setSpan(groupStart, 0, total - groupStart, 1)
+
+    def updateGimbalData(self):
+        index = self.tabs.currentIndex()
+        data = self.tabData.get(index)
+        if not data:
+            return
+        sourceModel = data["model"]
+
+
+        for row in range(sourceModel.rowCount()):
+            nameItem = sourceModel.item(row, 1)
+            if not nameItem:
+                continue
+
+            fullPath = nameItem.data(Qt.UserRole)
+            if not fullPath or not cmds.objExists(fullPath):
+                if fullPath not in self.missingControls:
+                    self.missingControls.add(fullPath)
+                    cmds.warning(f"Control {fullPath.split(':')[-1].split('|')[-1]} is not exist, or has been deleted.")
+                continue
+            try:
+                percent, _ = GimbalMonitorUtility.getGimbalLockPercent(fullPath)
+                gimbalItem = sourceModel.item(row, 3)
+                if gimbalItem:
+                    gimbalItem.setData(percent, Qt.UserRole)
+            except RuntimeError:
+                cmds.warning(f"Could not read rotation data for {fullPath.split(':')[-1].split('|')[-1]}")
+
+    @staticmethod
+    def onControlRenamed(topLeft, bottomRight, roles, sourceModel):
         """
         Triggers automatically when data inside the base model changes.
         """
@@ -314,22 +660,42 @@ class App(QMainWindow):
         if Qt.EditRole not in roles and Qt.DisplayRole not in roles:
             return
 
-        # Identify which cell column was edited
+        # Only for name column
         if topLeft.column() != 1:
             return
 
+
+
         # Retrieve the item handle from the source model index
-        item = self.tabs.currentWidget().findChild(QTableView).model().sourceModel().itemFromIndex(topLeft)
+        item = sourceModel.itemFromIndex(topLeft)
+
+
+        #       For some time I have used this one
+        #       ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+        #      -------------------------------------------------------------------------------------------------------------
+        #      |    item = self.tabs.currentWidget().findChild(QTableView).model().sourceModel().itemFromIndex(topLeft)    |
+        #      -------------------------------------------------------------------------------------------------------------
+        # I have found that using lambdas is cleaner, but this one line has eaten so much of my time (I can't just delete it).
+        # So, maybe this explanation would be useful for you ;)
+        #
+        #       tabs.currentWidget() - gets the tab page that is currently open
+        #       findChild(QTableView) - searches inside that tab widget for a child widget of type QTableView.
+        #       This way you can reach the table without storing it as self.view
+        #       model() - gets the model currently attached to that QTableView. Right now, it's a proxy
+        #       sourceModel() - gets the actual source model
+        #       itemFromIndex(topLeft) - topLeft is the index that dataChanged signal sends, it's the index of the cell that just changed.
+        #       itemFromIndex converts that index into the actual QStandardItem object so you can work with its data.
+
+
         if not item:
             return
 
         # Extract the new text the animator typed
         newName = item.text().strip()
 
-        # Retrieve the hidden full long path string we stored earlier
         fullPath = item.data(Qt.UserRole)
 
-        # Safety Check: Verify the control still exists in Maya's hierarchy
+        # Verify the control still exists in Maya's hierarchy
         if not cmds.objExists(fullPath):
             cmds.warning(f"Warning: {fullPath} no longer exists in the Maya scene.")
             return
@@ -337,10 +703,12 @@ class App(QMainWindow):
         try:
             # Execute the native Maya rename operation
             # Maya returns the newly generated name path back to us
-            actualNewName = cmds.rename(fullPath, newName)
+            actualNewName = cmds.rename(fullPath, newName) # REMEMBER! cmds.rename() return a SHORT name, NOT A FULL PATH
 
             # Update the item data cache to reflect the new long path structure
-            item.setData(actualNewName, Qt.UserRole)
+            fullNewPath = cmds.ls(actualNewName, long=True)
+            if fullNewPath:
+                item.setData(fullNewPath[0], Qt.UserRole)
             print(f"Successfully renamed {fullPath} to {actualNewName}")
 
         except Exception as error:
@@ -350,22 +718,8 @@ class App(QMainWindow):
             shortName = fullPath.split("|")[-1]
             item.setText(shortName)
 
-    def addCharacterTab(self):
-            self.num += 1
-            newTab = QWidget()
-            nameOfTheNewTab = f"Character_0{self.num}"
-            self.tabs.addTab(newTab, nameOfTheNewTab)
-
-    def removeCharacterTab(self, index):
-            self.tabs.removeTab(index)
-
-    def onTabChanged(self, index):
-        print(f"Switched to tab {index}")
-        # useful for updating the display when switching characters
-
-
 
 def run():
     parent = mayaWindow()
-    window = App(parent)
+    window = AppInit(parent)
     window.show()

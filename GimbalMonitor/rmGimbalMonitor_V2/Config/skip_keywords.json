@@ -3,8 +3,8 @@
 	"pv", "pole", "polevector", "pole_vector",
 	"ikfk", "ik_fk", "switch", "settings",
 	"space", "follow",
-	"vis", "visibility", 
+	"vis", "visibility", "guide",
 	"hair", "strand", 
-	"face", "nose", "lip", "mouthe", "cheek", "eyebrow", "ear", 
+	"face", "nose", "lip", "mouth", "cheek", "eyebrow", "brow", "ear", "eye", "iris", "jaw", "teeth", 
 	"finger", "thumb", "index", "middle", "ring", "pinky"
 ]
