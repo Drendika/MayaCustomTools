@@ -262,6 +262,7 @@ class GroupDelegate(QStyledItemDelegate):
     """
         A custom item delegate used to change rendering of the first column (group column).
         """
+
     def paint(self, painter, option, index):
         """
             Makes the icon dynamic. 3 controls = full size
@@ -280,35 +281,56 @@ class GroupDelegate(QStyledItemDelegate):
         icon = index.data(Qt.DecorationRole)
         rect = option.rect
 
-        maxIconSize = min(rect.width() - 10, rect.height() - 24, 64) # Takes the min size for the icon (capped at 64)
+        # Clamp the cell rect to the visible viewport area
+        if option.widget:
+            viewportHeight = option.widget.height() # The height of the visible area of the cell
+            visiblePartTop = max(rect.top(), 0) # The top corner of the cell (capped at 0)
+            visiblePartBottom = min(rect.bottom(), viewportHeight) # The bottom of the cell
+            # (either takes the coordinates of the full height, or the visible part of the cell)
+            if visiblePartBottom <= visiblePartTop: # If this statement is True,
+                # that means that the cell is not visible, so there is no need to display the icon and text
+                painter.restore()
+                return
+            visibleRect = QRect(rect.left(), visiblePartTop, rect.width(), visiblePartBottom - visiblePartTop)
+        else:
+            visibleRect = rect # Default rect
+
+        maxIconSize = min(visibleRect.width() - 10, visibleRect.height() - 24, 64)
+        print(maxIconSize)
         if maxIconSize < 35:
             groupFont = option.font
             groupFont.setPointSize(12)
             groupFont.setBold(True)
             painter.setFont(groupFont)
-            painter.drawText(rect, Qt.AlignCenter, text)
+            painter.drawText(visibleRect, Qt.AlignCenter, text)
             painter.restore()
             return
+
         iconSize = QSize(maxIconSize, maxIconSize)
-        pixmap = icon.pixmap(iconSize) # Converts QIcon to pixmap (pixmap can be displayed in the table, QIcon ont)
-        # Calculates position of the icon
-        # X and Y - cell's positions in the table. Width and Height size of the cell
-        iconX = rect.x() + (rect.width() - iconSize.width()) // 2
-        iconY = rect.y() + (rect.height() - iconSize.height()) // 2 - 10
+        pixmap = icon.pixmap(iconSize)
+
+        # Treat icon + gap + text as one block, center the whole block in visibleRect
+        textHeight = 20
+        gap = 4
+        blockHeight = iconSize.height() + gap + textHeight
+        blockTop = visibleRect.y() + (visibleRect.height() - blockHeight) // 2
+
+        iconX = visibleRect.x() + (visibleRect.width() - iconSize.width()) // 2
+        iconY = blockTop
+
         painter.drawPixmap(iconX, iconY, pixmap)
 
         if text:
-            # Makes text bigger
             groupFont = option.font
             groupFont.setPointSize(12)
             groupFont.setBold(True)
             painter.setFont(groupFont)
 
             textRect = QRect(
-                rect.x(),
-                iconY + iconSize.height() + 4,
-                rect.width(),
-                20
+                visibleRect.x(),
+                iconY + iconSize.height() + gap,
+                visibleRect.width(),
+                textHeight
             )
             painter.drawText(textRect, Qt.AlignHCenter, text)
 
