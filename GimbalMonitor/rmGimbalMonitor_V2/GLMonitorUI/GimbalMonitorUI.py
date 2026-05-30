@@ -1,18 +1,21 @@
-from PySide2.QtGui import *
-from PySide2.QtCore import *
-from PySide2.QtWidgets import *
-import maya.cmds as cmds
 from GimbalMonitor.rmGimbalMonitor_V2.GLMonitorFunc import GimbalMonitorUtility
+from PySide2.QtWidgets import *
+from PySide2.QtCore import *
+from PySide2.QtGui import *
+import maya.cmds as cmds
+import os
 
 CURRENT_VERSION = "1.0.0"
 
+GROUP_ICONS_DIR = os.path.join(os.path.dirname(__file__), "..", "icons")
+
 GROUP_ICONS = {
-    "Head":        r"D:\rigging_tools\scripts\GimbalMonitor\rmGimbalMonitor_V2\icons\Head.png",
-    "Spine":       r"D:\rigging_tools\scripts\GimbalMonitor\rmGimbalMonitor_V2\icons\Spine.png",
-    "Arms":        r"D:\rigging_tools\scripts\GimbalMonitor\rmGimbalMonitor_V2\icons\Arms.png",
-    "Legs":        r"D:\rigging_tools\scripts\GimbalMonitor\rmGimbalMonitor_V2\icons\Legs.png",
-    "Accessories": r"D:\rigging_tools\scripts\GimbalMonitor\rmGimbalMonitor_V2\icons\Accessories.png",
-    "Other":       r"D:\rigging_tools\scripts\GimbalMonitor\rmGimbalMonitor_V2\icons\Other.png"
+    "Head":        os.path.join(GROUP_ICONS_DIR, "Head.png"),
+    "Spine":       os.path.join(GROUP_ICONS_DIR, "Spine.png"),
+    "Arms":        os.path.join(GROUP_ICONS_DIR, "Arms.png"),
+    "Legs":        os.path.join(GROUP_ICONS_DIR, "Legs.png"),
+    "Accessories": os.path.join(GROUP_ICONS_DIR, "Accessories.png"),
+    "Other":       os.path.join(GROUP_ICONS_DIR, "Other.png"),
 }
 
 def mayaWindow():
@@ -37,7 +40,6 @@ class AppInit(QMainWindow):
         self.stackedWidget = QStackedWidget()
 
         self.setUp = AppSetUp(ref=self)
-        self.app = App
 
         self.stackedWidget.addWidget(self.setUp)  # index 0
         self.stackedWidget.setCurrentIndex(0)
@@ -145,8 +147,7 @@ class CharacterEntry(QWidget):
             return
 
         curves = cmds.listRelatives(sel, allDescendents=True, type="nurbsCurve", fullPath=True)
-        if curves:
-            transforms = cmds.listRelatives(curves, parent=True, fullPath=True) or []
+        transforms = cmds.listRelatives(curves, parent=True, fullPath=True)  or [] if curves else []
 
         alreadyAdded = set()
         self.controls = []
@@ -163,7 +164,7 @@ class CharacterEntry(QWidget):
         name = self.nameField.text().strip()
         charType = self.typeCombo.currentText()
         if name:
-            return (name, charType, self.controls)
+            return name, charType, self.controls
         return None
 
 def buildControlModel(transforms):
@@ -281,7 +282,12 @@ class GroupDelegate(QStyledItemDelegate):
 
         maxIconSize = min(rect.width() - 10, rect.height() - 24, 64) # Takes the min size for the icon (capped at 64)
         if maxIconSize < 35:
+            groupFont = option.font
+            groupFont.setPointSize(12)
+            groupFont.setBold(True)
+            painter.setFont(groupFont)
             painter.drawText(rect, Qt.AlignCenter, text)
+            painter.restore()
             return
         iconSize = QSize(maxIconSize, maxIconSize)
         pixmap = icon.pixmap(iconSize) # Converts QIcon to pixmap (pixmap can be displayed in the table, QIcon ont)
@@ -312,7 +318,7 @@ class RotationOrderDelegate(QStyledItemDelegate):
     def __init__(self, sourceModel, parent=None):
         super().__init__(parent)
         self.arrowIcon = QPixmap(":/arrowDown.png")
-        self._sourceModel = sourceModel
+        self.sourceModel = sourceModel
         self.rotation_orders = ["XYZ", "YZX", "ZXY", "XZY", "YXZ", "ZYX"]
 
     def paint(self, painter, option, index):
@@ -370,7 +376,7 @@ class RotationOrderDelegate(QStyledItemDelegate):
 
             # Map proxy index to source index
             sourceIndex = model.mapToSource(index)
-            nameItem = self._sourceModel.item(sourceIndex.row(), 1)
+            nameItem = self.sourceModel.item(sourceIndex.row(), 1)
             if not nameItem:
                 return True
 
@@ -381,12 +387,12 @@ class RotationOrderDelegate(QStyledItemDelegate):
             try:
                 cmds.setAttr(f"{fullPath}.rotateOrder", roIndex)
 
-                roItem = self._sourceModel.item(sourceIndex.row(), 2)
+                roItem = self.sourceModel.item(sourceIndex.row(), 2)
                 if roItem:
                     roItem.setText(selectedRO)
 
-            except Exception as e:
-                cmds.warning(f"Failed to set rotation order: {e}")
+            except RuntimeError as error:
+                cmds.warning(f"Failed to set rotation order: {error}")
 
         return True  # tells Qt "I handled this click, don't do anything else"
 
@@ -464,28 +470,36 @@ class GimbalDelegate(QStyledItemDelegate):
 class App(QWidget):
     def __init__(self, characters=None, parent=None):
         super().__init__(parent)
+        self.tabs = None # Tabs itself
+        self.timer = None
+        self.tabData = {} # Stores the data about tabs (_buildTabContent)
+        self.helpMenu = None
+        self.searchBox = None
+        self.lastRowCounts = {} # This is for merging rows in the name column (the end of updateGimbalData)
         self.missingControls = set() # This is for warning in the updateGimbalData
-        self.tubNumber = len(characters) if characters else 1
+
 
         self.setFocusPolicy(Qt.ClickFocus)
         verticalLayoutMain = QVBoxLayout(self)
 
+        self.searchBoxArea()
+        self.creatingTabs(characters)
 
+    def searchBoxArea(self):
         # Search box area
         verticalLayoutSearchBox = QVBoxLayout()
-        verticalLayoutMain.addLayout(verticalLayoutSearchBox)
+        self.layout().addLayout(verticalLayoutSearchBox)
         horizontalLayoutSearchBox = QHBoxLayout()
         verticalLayoutSearchBox.addLayout(horizontalLayoutSearchBox)
-        searchBox = QLineEdit()
-        searchBox.setPlaceholderText("SearchBox")
-        searchBox.setMinimumSize(250, 27)
-        horizontalLayoutSearchBox.addWidget(searchBox)
+        self.searchBox = QLineEdit()
+        self.searchBox.setPlaceholderText("SearchBox")
+        self.searchBox.setMinimumSize(250, 27)
+        horizontalLayoutSearchBox.addWidget(self.searchBox)
 
 
         # Help button
 
-        self.helpButton = QPushButton("?")
-        horizontalLayoutSearchBox.addWidget(self.helpButton)
+        helpButton = QPushButton("?")
 
         self.helpMenu = QMenu()
         self.helpMenu.addAction("Documentation")
@@ -494,13 +508,13 @@ class App(QWidget):
         self.helpMenu.addSeparator()
         self.helpMenu.addAction("Contact")
         self.helpMenu.addAction("About")
-        self. helpButton.setMenu(self.helpMenu)
+        helpButton.setMenu(self.helpMenu)
+        horizontalLayoutSearchBox.addWidget(helpButton)
 
+    def creatingTabs(self, characters):
         # Tabs
-
         self.tabs = QTabWidget()
-        verticalLayoutMain.addWidget(self.tabs)
-        self.tabData = {}
+        self.layout().addWidget(self.tabs)
 
         if characters:
             for name, charType, controls in characters:
@@ -510,23 +524,21 @@ class App(QWidget):
                 # store charType on the tab widget for future use
                 tab.setProperty("charType", charType)
 
-                sourceModel, spans = buildControlModel(controls)  # ← pass this character's controls
-                self._buildTabContent(tabLayout, sourceModel, spans, searchBox)
+                sourceModel, spans = buildControlModel(controls)
+                self._buildTabContent(tabLayout, sourceModel, spans, self.searchBox)
         else:
             #
             tab = QWidget()
             tabLayout = QVBoxLayout(tab)
             self.tabs.addTab(tab, "Character_01")
             sourceModel, spans = buildControlModel([])
-            self._buildTabContent(tabLayout, sourceModel, spans, searchBox)
+            self._buildTabContent(tabLayout, sourceModel, spans, self.searchBox)
 
+    def timer(self):
         # live updates
         self.timer = QTimer()
         self.timer.setInterval(100)
         self.timer.timeout.connect(self.updateGimbalData)
-        for idx, data in self.tabData.items():
-            p, v = data["proxy"], data["view"]
-            self.timer.timeout.connect(lambda p=p, v=v: self.reapplySpans(p, v))
         self.timer.start()
 
     def _buildTabContent(self, tabLayout, sourceModel, spans, searchBox):
@@ -553,6 +565,7 @@ class App(QWidget):
                 view.setSpan(startRow, 0, rowCount, 1)
         # Updates the spans when the view (proxy model) changes (used search to hide/show rows)
         searchBox.textChanged.connect(lambda _, p=proxy, v=view: self.reapplySpans(p, v))
+        proxy.layoutChanged.connect(self.debug)
 
         # Delegates
         groupDelegate = GroupDelegate()
@@ -562,7 +575,9 @@ class App(QWidget):
         view.setItemDelegateForColumn(2,  rotationOrderDelegate)
         view.setItemDelegateForColumn(3, gimbalDelegate)
 
-        sourceModel.dataChanged.connect(lambda topLeft, bottomRight, roles, sm=sourceModel: self.onControlRenamed(topLeft, bottomRight, roles, sm))
+        sourceModel.dataChanged.connect(lambda topLeft, bottomRight, roles, sm=sourceModel:
+                                        self.onControlRenamed(topLeft, bottomRight, roles, sm)
+                                        )
         tabLayout.addWidget(view)
 
         # Save references so timer and other methods can reach them by tab index
@@ -577,7 +592,9 @@ class App(QWidget):
             "model": sourceModel,
             "proxy": proxy,
             "view": view,
-            "delegates": [groupDelegate, gimbalDelegate, rotationOrderDelegate]
+            "delegates": [groupDelegate, gimbalDelegate, rotationOrderDelegate] #This is not used anywhere.
+            # Delegates are stored here solely to keep them alive.
+            # If we do not store delegates, Python’s garbage collector will delete them, since nothing is holding on to them.
         }
 
         # auto resize name column
@@ -591,6 +608,8 @@ class App(QWidget):
                 maxWidth = width
         view.setColumnWidth(1, maxWidth + 10) # + 10 is a padding
 
+    def debug(self):
+        print("Fired")
 
     def reapplySpans(self, proxy, view):
         """
@@ -630,6 +649,8 @@ class App(QWidget):
         if not data:
             return
         sourceModel = data["model"]
+        proxy = data["proxy"]
+        view = data["view"]
 
 
         for row in range(sourceModel.rowCount()):
@@ -651,8 +672,14 @@ class App(QWidget):
             except RuntimeError:
                 cmds.warning(f"Could not read rotation data for {fullPath.split(':')[-1].split('|')[-1]}")
 
-    @staticmethod
-    def onControlRenamed(topLeft, bottomRight, roles, sourceModel):
+            # Only reapply spans if the number of visible rows changed
+            newCount = proxy.rowCount()
+            if newCount != self.lastRowCounts.get(index, -1):
+                self.lastRowCounts[index] = newCount
+                self.reapplySpans(proxy, view)
+
+
+    def onControlRenamed(self, topLeft, bottomRight, roles, sourceModel):
         """
         Triggers automatically when data inside the base model changes.
         """
