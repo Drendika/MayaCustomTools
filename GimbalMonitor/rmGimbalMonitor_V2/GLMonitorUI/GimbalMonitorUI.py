@@ -26,6 +26,7 @@ def mayaWindow():
     import shiboken2
     return shiboken2.wrapInstance(int(MQtUtil.mainWindow()), QMainWindow)
 
+# ───────────────────── InitStage ──────────────────────────
 class AppInit(QMainWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -166,6 +167,7 @@ class CharacterEntry(QWidget):
         if name:
             return name, charType, self.controls
         return None
+# ──────────────────────────────────────────────────────────
 
 def buildControlModel(transforms):
     # Create the source data storage
@@ -175,18 +177,11 @@ def buildControlModel(transforms):
     # Filter and categorize using the utilities module
     grouped = GimbalMonitorUtility.categorizeAllControls(transforms)
 
-    # Base for merging group cells
-    spans = []  # stores (startRow, rowCount) per group
-    currentRow = 0
-
     # Populate rows systematically by iterating through the groups
     groupOrder = ["Head", "Spine", "Arms", "Legs", "Accessories", "Other"]
     for groupName in groupOrder:
         if groupName not in grouped:
             continue
-
-        groupControls = grouped[groupName] # Stores the list of controls. len(groupControls) gives you length of the list.
-        spans.append((currentRow, len(groupControls)))  # Track where to stap merging and how many cells to merge (controls = amount of cells)
 
         for ctrl in grouped[groupName]:
             # Query utils data values for each control item
@@ -204,7 +199,7 @@ def buildControlModel(transforms):
             # Name column
             itemControlName = QStandardItem(onlyName)
             itemControlName.setTextAlignment(Qt.AlignCenter)
-            itemControlName.setFlags(itemControlName.flags() | Qt.ItemIsEditable | Qt.ItemIsSelectable)
+            itemControlName.setFlags(itemControlName.flags() | Qt.ItemIsSelectable & ~Qt.ItemIsEditable )
             itemControlName.setData(ctrl, Qt.UserRole)
             # Rotation order column
             itemRotationOrder = QStandardItem(rotationOrder)
@@ -219,9 +214,8 @@ def buildControlModel(transforms):
 
             # Append as a distinct horizontal row of data cells
             model.appendRow([itemGroup, itemControlName, itemRotationOrder, itemGimbalLock])
-            currentRow += 1 # Adds +1 row after each iteration (for merging cells of group column)
 
-    return model, spans
+    return model
 
 class ControlFilterProxyModel(QSortFilterProxyModel):
     def __init__(self, parent=None):
@@ -258,6 +252,7 @@ class ControlFilterProxyModel(QSortFilterProxyModel):
 
         return False
 
+# ───────────────────── Delegates ──────────────────────────
 class GroupDelegate(QStyledItemDelegate):
     """
         A custom item delegate used to change rendering of the first column (group column).
@@ -296,7 +291,6 @@ class GroupDelegate(QStyledItemDelegate):
             visibleRect = rect # Default rect
 
         maxIconSize = min(visibleRect.width() - 10, visibleRect.height() - 24, 64)
-        print(maxIconSize)
         if maxIconSize < 35:
             groupFont = option.font
             groupFont.setPointSize(12)
@@ -339,13 +333,13 @@ class GroupDelegate(QStyledItemDelegate):
 class RotationOrderDelegate(QStyledItemDelegate):
     def __init__(self, sourceModel, parent=None):
         super().__init__(parent)
-        self.arrowIcon = QPixmap(":/arrowDown.png")
+        self.arrowIconDown = QPixmap(":/arrowDown.png")
         self.sourceModel = sourceModel
         self.rotation_orders = ["XYZ", "YZX", "ZXY", "XZY", "YXZ", "ZYX"]
 
     def paint(self, painter, option, index):
         if index.column() != 2:
-            super().paint(painter, option, index)
+            super().paint(painter, option, index) # Calling the default paint()
             return
 
         painter.save()
@@ -372,11 +366,11 @@ class RotationOrderDelegate(QStyledItemDelegate):
         painter.drawText(textRect, Qt.AlignLeft | Qt.AlignVCenter, text)
 
         iconX = startX + textWidth + gap
-        painter.drawPixmap(iconX, iconY, self.arrowIcon.scaled(iconWidth, iconHeight))
+        painter.drawPixmap(iconX, iconY, self.arrowIconDown.scaled(iconWidth, iconHeight))
 
         painter.restore()
 
-    def editorEvent(self, event, model, option, index):
+    def editRotationOrder(self, event, model, option, index):
         if index.column() != 2:
             return False
 
@@ -389,7 +383,9 @@ class RotationOrderDelegate(QStyledItemDelegate):
         for rotation_order in self.rotation_orders:
             menu.addAction(rotation_order)
 
-        globalPos = option.widget.mapToGlobal(option.rect.bottomLeft())
+        view = option.widget
+        cellRect = view.visualRect(index)
+        globalPos = view.viewport().mapToGlobal(cellRect.bottomLeft())
         chosen = menu.exec_(globalPos)
 
         if chosen:
@@ -488,7 +484,7 @@ class GimbalDelegate(QStyledItemDelegate):
             painter.drawText(warnRect, Qt.AlignLeft | Qt.AlignTop, "!")
 
         painter.restore()
-
+# ──────────────────────────────────────────────────────────
 class App(QWidget):
     def __init__(self, characters=None, parent=None):
         super().__init__(parent)
@@ -506,6 +502,7 @@ class App(QWidget):
 
         self.searchBoxArea()
         self.creatingTabs(characters)
+        self.timerGimbal()
 
     def searchBoxArea(self):
         # Search box area
@@ -546,24 +543,24 @@ class App(QWidget):
                 # store charType on the tab widget for future use
                 tab.setProperty("charType", charType)
 
-                sourceModel, spans = buildControlModel(controls)
-                self._buildTabContent(tabLayout, sourceModel, spans, self.searchBox)
+                sourceModel = buildControlModel(controls)
+                self._buildTabContent(tabLayout, sourceModel, self.searchBox)
         else:
             #
             tab = QWidget()
             tabLayout = QVBoxLayout(tab)
             self.tabs.addTab(tab, "Character_01")
-            sourceModel, spans = buildControlModel([])
-            self._buildTabContent(tabLayout, sourceModel, spans, self.searchBox)
+            sourceModel = buildControlModel([])
+            self._buildTabContent(tabLayout, sourceModel, self.searchBox)
 
-    def timer(self):
+    def timerGimbal(self):
         # live updates
         self.timer = QTimer()
         self.timer.setInterval(100)
         self.timer.timeout.connect(self.updateGimbalData)
         self.timer.start()
 
-    def _buildTabContent(self, tabLayout, sourceModel, spans, searchBox):
+    def _buildTabContent(self, tabLayout, sourceModel, searchBox):
         proxy = ControlFilterProxyModel()
         proxy.setSourceModel(sourceModel)
         searchBox.textChanged.connect(proxy.setFilterText)
@@ -576,18 +573,20 @@ class App(QWidget):
         view.setSortingEnabled(False)
         view.resizeColumnsToContents()
         view.horizontalHeader().setSectionResizeMode(3, QHeaderView.Stretch)
-        view.setSelectionMode(QAbstractItemView.ExtendedSelection)
-        view.setSelectionBehavior(QAbstractItemView.SelectRows)
         view.horizontalHeader().setSectionResizeMode(0, QHeaderView.Fixed)
         view.setColumnWidth(0, 80)
+        view.setSelectionMode(QAbstractItemView.ExtendedSelection)
+        view.setSelectionBehavior(QAbstractItemView.SelectRows)
 
-        # Sets spans for group column when table is created
-        for startRow, rowCount in spans:
-            if rowCount > 1:
-                view.setSpan(startRow, 0, rowCount, 1)
+        view.setContextMenuPolicy(Qt.CustomContextMenu) # Defining and calling context menu for name column
+        view.customContextMenuRequested.connect(
+            lambda pos, v=view: self.onContextMenu(pos, v)
+        )
+
         # Updates the spans when the view (proxy model) changes (used search to hide/show rows)
+        self.reapplySpans(proxy, view)
         searchBox.textChanged.connect(lambda _, p=proxy, v=view: self.reapplySpans(p, v))
-        proxy.layoutChanged.connect(self.debug)
+        view.verticalScrollBar().valueChanged.connect(view.viewport().update) # Updates all delegates of the view when the used is scrolling the table
 
         # Delegates
         groupDelegate = GroupDelegate()
@@ -630,8 +629,51 @@ class App(QWidget):
                 maxWidth = width
         view.setColumnWidth(1, maxWidth + 10) # + 10 is a padding
 
-    def debug(self):
-        print("Fired")
+    # ─────────────────────── Context Menu ─────────────────────
+    def onContextMenu(self, pos, view):
+        # Get the index at the click position
+        index = view.indexAt(pos)
+
+        # Only show menu for the Name column (column 1)
+        if not index.isValid() or index.column() != 1:
+            return
+
+        menu = QMenu(view)
+
+        renameAction = menu.addAction("Rename")
+        selectAction = menu.addAction("Select in Maya")
+        menu.addSeparator()
+        copyAction = menu.addAction("Copy name")
+
+        # Execute the menu at the cursor position - blocks until user picks or dismisses
+        action = menu.exec_(view.viewport().mapToGlobal(pos))
+
+        if action == renameAction:
+            self.onRename(index, view)
+        elif action == selectAction:
+            self.onSelectInMaya(index, view)
+        elif action == copyAction:
+            self.onCopyName(index)
+
+    def onRename(self, index, view):
+        view.edit(index)  # opens the cell's built-in inline editor
+
+    def onSelectInMaya(self, index, view):
+        tabIndex = self.tabs.currentIndex()
+        sourceModel = self.tabData[tabIndex]["model"]
+        proxy = self.tabData[tabIndex]["proxy"]
+
+        sourceIndex = proxy.mapToSource(index)
+        fullPath = sourceModel.itemFromIndex(sourceIndex).data(Qt.UserRole) # The full path from USerRole
+
+        if fullPath and cmds.objExists(fullPath):
+            cmds.select(fullPath)
+
+    def onCopyName(self, index):
+        name = index.data(Qt.DisplayRole)
+        QApplication.clipboard().setText(name)
+
+    # ──────────────────────────────────────────────────────────
 
     def reapplySpans(self, proxy, view):
         """
@@ -699,7 +741,6 @@ class App(QWidget):
             if newCount != self.lastRowCounts.get(index, -1):
                 self.lastRowCounts[index] = newCount
                 self.reapplySpans(proxy, view)
-
 
     def onControlRenamed(self, topLeft, bottomRight, roles, sourceModel):
         """
