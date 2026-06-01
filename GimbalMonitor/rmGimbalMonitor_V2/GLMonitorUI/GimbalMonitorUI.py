@@ -1,3 +1,4 @@
+from GimbalMonitor.rmGimbalMonitor_V2.GLMonitorUI.GimbalMonitorHelpMenu import checkForUpdates, ContactWindow
 from GimbalMonitor.rmGimbalMonitor_V2.GLMonitorFunc import GimbalMonitorUtility
 from PySide2.QtWidgets import *
 from PySide2.QtCore import *
@@ -5,7 +6,6 @@ from PySide2.QtGui import *
 import maya.cmds as cmds
 import os
 
-CURRENT_VERSION = "1.0.0"
 
 GROUP_ICONS_DIR = os.path.join(os.path.dirname(__file__), "..", "icons")
 
@@ -34,8 +34,9 @@ class AppInit(QMainWindow):
         self.setCentralWidget(central)
         central.setFocusPolicy(Qt.ClickFocus)
         characterVerticalLayout = QVBoxLayout(central)
+        characterVerticalLayout.setContentsMargins(0, 0, 0, 0)
 
-        self.setWindowTitle("rmGimbalMonitor_V2_DevBuild_02")
+        self.setWindowTitle("rmGimbalMonitor_V2_DevBuild")
         self.setMinimumSize(650, 600)
 
         self.stackedWidget = QStackedWidget()
@@ -46,6 +47,27 @@ class AppInit(QMainWindow):
         self.stackedWidget.setCurrentIndex(0)
 
         characterVerticalLayout.addWidget(self.stackedWidget)
+
+        # Help
+        menu_bar = self.menuBar()
+        helpMenu = menu_bar.addMenu("Help")
+        helpMenuDoc = QAction("Documentation (Soon)", self)
+        # helpMenuDoc.triggered.connect(self.open_file)
+        helpMenuChangeLog = QAction("Change Log (Soon)", self)
+        # helpMenuChangeLog.triggered.connect(self.open_file)
+        helpMenuUpdates = QAction("Check for Updates...", self)
+        helpMenuUpdates.triggered.connect(self.onCheckForUpdates)
+        helpMenuContact = QAction("Contact", self)
+        helpMenuContact.triggered.connect(self.onContact)
+        helpMenuAbout = QAction("About", self)
+        # helpMenuAbout.triggered.connect(self.open_file)
+
+        helpMenu.addAction(helpMenuDoc)
+        helpMenu.addAction(helpMenuChangeLog)
+        helpMenu.addAction(helpMenuUpdates)
+        helpMenu.addSeparator()
+        helpMenu.addAction(helpMenuContact)
+        helpMenu.addAction(helpMenuAbout)
 
     def onInitialize(self):
         shapes = cmds.ls(type="nurbsCurve", long=True)
@@ -63,6 +85,14 @@ class AppInit(QMainWindow):
         self.app = App(characters=characters)
         self.stackedWidget.addWidget(self.app)  # index 1
         self.stackedWidget.setCurrentIndex(1)
+
+    def onCheckForUpdates(self):
+        checkForUpdates(parentWidget=self)
+
+    def onContact(self):
+        dialog = ContactWindow(parent=self)
+        dialog.exec_()
+
 
 class AppSetUp(QWidget):
     def __init__(self, ref, parent=None):
@@ -96,9 +126,11 @@ class AppSetUp(QWidget):
         self.unInitLabel.setAlignment(Qt.AlignCenter)
         mainLayout.addWidget(self.unInitLabel)
 
+        horizontalLayoutBtn = QHBoxLayout()
+        mainLayout.addLayout(horizontalLayoutBtn)
         initButton = QPushButton("Initialize Gimbal Monitor")
         initButton.clicked.connect(self.AppInitInstance.onInitialize)
-        mainLayout.addWidget(initButton)
+        horizontalLayoutBtn.addWidget(initButton)
 
     def _addEntry(self):
         entry = CharacterEntry()
@@ -336,6 +368,9 @@ class RotationOrderDelegate(QStyledItemDelegate):
         self.arrowIconDown = QPixmap(":/arrowDown.png")
         self.sourceModel = sourceModel
         self.rotation_orders = ["XYZ", "YZX", "ZXY", "XZY", "YXZ", "ZYX"]
+        self._activeMenu = None
+        self._activeIndex = None
+
 
     def paint(self, painter, option, index):
         if index.column() != 2:
@@ -370,7 +405,7 @@ class RotationOrderDelegate(QStyledItemDelegate):
 
         painter.restore()
 
-    def editRotationOrder(self, event, model, option, index):
+    def editorEvent(self, event, model, option, index):
         if index.column() != 2:
             return False
 
@@ -378,10 +413,20 @@ class RotationOrderDelegate(QStyledItemDelegate):
         if event.type() != QEvent.MouseButtonPress or event.button() != Qt.LeftButton:
             return False
 
+        if self._activeMenu is not None:
+            self._activeMenu.close()
+            self._activeMenu = None
+            self._activeIndex = None
+            return True
+
         # Build and show the dropdown menu at the bottom of the cell
         menu = QMenu()
         for rotation_order in self.rotation_orders:
             menu.addAction(rotation_order)
+
+        self._activeMenu = menu
+        self._activeIndex = index
+        menu.aboutToHide.connect(self._onMenuHidden)
 
         view = option.widget
         cellRect = view.visualRect(index)
@@ -413,6 +458,11 @@ class RotationOrderDelegate(QStyledItemDelegate):
                 cmds.warning(f"Failed to set rotation order: {error}")
 
         return True  # tells Qt "I handled this click, don't do anything else"
+
+    def _onMenuHidden(self):
+        print(self._activeMenu)
+        self._activeMenu = None
+        self._activeIndex = None
 
 class GimbalDelegate(QStyledItemDelegate):
     def paint(self, painter, option, index):
@@ -511,24 +561,9 @@ class App(QWidget):
         horizontalLayoutSearchBox = QHBoxLayout()
         verticalLayoutSearchBox.addLayout(horizontalLayoutSearchBox)
         self.searchBox = QLineEdit()
-        self.searchBox.setPlaceholderText("SearchBox")
-        self.searchBox.setMinimumSize(250, 27)
+        self.searchBox.setPlaceholderText("Search...")
+        self.searchBox.setMinimumSize(250, 30)
         horizontalLayoutSearchBox.addWidget(self.searchBox)
-
-
-        # Help button
-
-        helpButton = QPushButton("?")
-
-        self.helpMenu = QMenu()
-        self.helpMenu.addAction("Documentation")
-        self.helpMenu.addAction("Change Log")
-        self.helpMenu.addAction("Check for Updates...")
-        self.helpMenu.addSeparator()
-        self.helpMenu.addAction("Contact")
-        self.helpMenu.addAction("About")
-        helpButton.setMenu(self.helpMenu)
-        horizontalLayoutSearchBox.addWidget(helpButton)
 
     def creatingTabs(self, characters):
         # Tabs
@@ -807,7 +842,6 @@ class App(QWidget):
             # Revert UI text back to its original short name state
             shortName = fullPath.split("|")[-1]
             item.setText(shortName)
-
 
 def run():
     parent = mayaWindow()
