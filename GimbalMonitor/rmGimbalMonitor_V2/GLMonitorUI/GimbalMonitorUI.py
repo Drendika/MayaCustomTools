@@ -1,4 +1,5 @@
-from GimbalMonitor.rmGimbalMonitor_V2.GLMonitorUI.GimbalMonitorHelpMenu import checkForUpdates, ContactWindow
+from GimbalMonitor.rmGimbalMonitor_V2.GLMonitorUI.GimbalMonitorHelpMenu import (CheckForUpdates,
+                                                                                ContactWindow, AboutWindow)
 from GimbalMonitor.rmGimbalMonitor_V2.GLMonitorFunc import GimbalMonitorUtility
 from PySide2.QtWidgets import *
 from PySide2.QtCore import *
@@ -17,6 +18,7 @@ GROUP_ICONS = {
     "Accessories": os.path.join(GROUP_ICONS_DIR, "Accessories.png"),
     "Other":       os.path.join(GROUP_ICONS_DIR, "Other.png"),
 }
+
 
 def mayaWindow():
     """
@@ -51,19 +53,19 @@ class AppInit(QMainWindow):
         # Help
         menu_bar = self.menuBar()
         helpMenu = menu_bar.addMenu("Help")
-        helpMenuDoc = QAction("Documentation (Soon)", self)
-        # helpMenuDoc.triggered.connect(self.open_file)
-        helpMenuChangeLog = QAction("Change Log (Soon)", self)
-        # helpMenuChangeLog.triggered.connect(self.open_file)
+        #helpMenuDoc = QAction("Documentation (Soon)", self)    # ← Не забудь додати
+        # helpMenuDoc.triggered.connect(self.open_file)     # ← Не забудь додати
+        #helpMenuChangeLog = QAction("Change Log (Soon)", self)     # ← Не забудь додати
+        # helpMenuChangeLog.triggered.connect(self.open_file)      # ← Не забудь додати
         helpMenuUpdates = QAction("Check for Updates...", self)
         helpMenuUpdates.triggered.connect(self.onCheckForUpdates)
         helpMenuContact = QAction("Contact", self)
         helpMenuContact.triggered.connect(self.onContact)
         helpMenuAbout = QAction("About", self)
-        # helpMenuAbout.triggered.connect(self.open_file)
+        helpMenuAbout.triggered.connect(self.OnAbout)
 
-        helpMenu.addAction(helpMenuDoc)
-        helpMenu.addAction(helpMenuChangeLog)
+        #helpMenu.addAction(helpMenuDoc)    # ← Не забудь додати
+        #helpMenu.addAction(helpMenuChangeLog)  # ← Не забудь додати
         helpMenu.addAction(helpMenuUpdates)
         helpMenu.addSeparator()
         helpMenu.addAction(helpMenuContact)
@@ -87,10 +89,14 @@ class AppInit(QMainWindow):
         self.stackedWidget.setCurrentIndex(1)
 
     def onCheckForUpdates(self):
-        checkForUpdates(parentWidget=self)
+        CheckForUpdates()
 
     def onContact(self):
         dialog = ContactWindow(parent=self)
+        dialog.exec_()
+
+    def OnAbout(self):
+        dialog = AboutWindow(parent=self)
         dialog.exec_()
 
 
