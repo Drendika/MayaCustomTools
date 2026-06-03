@@ -52,7 +52,7 @@ class CheckForUpdates(QDialog):
             return None, f"Unexpected error: {e}"
 
 
-    def compareVersions(self, current, latest):
+    def  compareVersions(self, current, latest):
         """
         Returns True if latest is newer than current.
         """

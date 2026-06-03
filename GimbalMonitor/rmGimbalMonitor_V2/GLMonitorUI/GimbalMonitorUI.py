@@ -15,7 +15,7 @@ GROUP_ICONS = {
     "Spine":       os.path.join(GROUP_ICONS_DIR, "Spine.png"),
     "Arms":        os.path.join(GROUP_ICONS_DIR, "Arms.png"),
     "Legs":        os.path.join(GROUP_ICONS_DIR, "Legs.png"),
-    "Accessories": os.path.join(GROUP_ICONS_DIR, "Accessories.png"),
+    "Props":       os.path.join(GROUP_ICONS_DIR, "Props.png"),
     "Other":       os.path.join(GROUP_ICONS_DIR, "Other.png"),
 }
 
@@ -87,6 +87,12 @@ class AppInit(QMainWindow):
         self.app = App(characters=characters)
         self.stackedWidget.addWidget(self.app)  # index 1
         self.stackedWidget.setCurrentIndex(1)
+
+    def closeEvent(self, event):
+        # If we've initialized the monitor, tell App to clean up first
+        if hasattr(self, 'app'):
+            self.app.closeEvent(event)
+        super().closeEvent(event)
 
     def onCheckForUpdates(self):
         CheckForUpdates()
@@ -216,7 +222,7 @@ def buildControlModel(transforms):
     grouped = GimbalMonitorUtility.categorizeAllControls(transforms)
 
     # Populate rows systematically by iterating through the groups
-    groupOrder = ["Head", "Spine", "Arms", "Legs", "Accessories", "Other"]
+    groupOrder = ["Head", "Spine", "Arms", "Legs", "Props", "Other"]
     for groupName in groupOrder:
         if groupName not in grouped:
             continue
@@ -541,6 +547,17 @@ class GimbalDelegate(QStyledItemDelegate):
 
         painter.restore()
 # ──────────────────────────────────────────────────────────
+
+class GimbalTableView(QTableView):
+    """
+        A custom version of QTableView. Updates only the group column
+        """
+    def scrollContentsBy(self, dx, dy):
+        super().scrollContentsBy(dx, dy)
+        if dy != 0:
+            columnWidth = self.columnWidth(0)
+            self.viewport().update(0, 0, columnWidth, self.viewport().height())
+
 class App(QWidget):
     def __init__(self, characters=None, parent=None):
         super().__init__(parent)
@@ -601,13 +618,40 @@ class App(QWidget):
         self.timer.timeout.connect(self.updateGimbalData)
         self.timer.start()
 
+        QApplication.instance().focusChanged.connect(self.onFocusChanged)
+
+    def onFocusChanged(self, old, new):
+        # new is None when the entire Maya application loses focus
+        if new is None:
+            print("stop timer")
+            self.timer.stop()
+        else:
+            if not self.timer.isActive():
+                self.timer.start()
+
+    def closeEvent(self, event):
+        QApplication.instance().focusChanged.disconnect(self.onFocusChanged)
+        if self.timer is not None:
+            self.timer.stop()
+            print("stop timer")
+            self.timer.deleteLater()
+            self.timer = None
+
+        for data in self.tabData.values():
+            model = data.get("model")
+            if model:
+                model.clear()
+
+        self.tabData.clear()
+        super().closeEvent(event)
+
     def _buildTabContent(self, tabLayout, sourceModel, searchBox):
         proxy = ControlFilterProxyModel()
         proxy.setSourceModel(sourceModel)
         searchBox.textChanged.connect(proxy.setFilterText)
 
         # Table
-        view = QTableView()
+        view = GimbalTableView() # Custom table view
         view.verticalHeader().hide()
         view.verticalHeader().setDefaultSectionSize(45)
         view.setModel(proxy)
@@ -626,8 +670,6 @@ class App(QWidget):
 
         # Updates the spans when the view (proxy model) changes (used search to hide/show rows)
         self.reapplySpans(proxy, view)
-        searchBox.textChanged.connect(lambda _, p=proxy, v=view: self.reapplySpans(p, v))
-        view.verticalScrollBar().valueChanged.connect(view.viewport().update) # Updates all delegates of the view when the used is scrolling the table
 
         # Delegates
         groupDelegate = GroupDelegate()
@@ -659,6 +701,8 @@ class App(QWidget):
             # If we do not store delegates, Python’s garbage collector will delete them, since nothing is holding on to them.
         }
 
+        searchBox.textChanged.connect(lambda _, p=proxy, v=view, i=tabIndex: self._onSearchChanged(p, v, i))
+
         # auto resize name column
         fontMetrics = view.fontMetrics()
         maxWidth = 0
@@ -669,6 +713,12 @@ class App(QWidget):
             if width > maxWidth:
                 maxWidth = width
         view.setColumnWidth(1, maxWidth + 10) # + 10 is a padding
+
+    def _onSearchChanged(self, proxy, view, tabIndex):
+        # Merging rows on textChanged
+        self.reapplySpans(proxy, view)
+        # Sync the lastRowCounts so the timer doesn't fire again needlessly.
+        self.lastRowCounts[tabIndex] = proxy.rowCount()
 
     # ─────────────────────── Context Menu ─────────────────────
     def onContextMenu(self, pos, view):
@@ -749,6 +799,7 @@ class App(QWidget):
             view.setSpan(groupStart, 0, total - groupStart, 1)
 
     def updateGimbalData(self):
+        print("updating gimbal data")
         index = self.tabs.currentIndex()
         data = self.tabData.get(index)
         if not data:
@@ -777,11 +828,11 @@ class App(QWidget):
             except RuntimeError:
                 cmds.warning(f"Could not read rotation data for {fullPath.split(':')[-1].split('|')[-1]}")
 
-            # Only reapply spans if the number of visible rows changed
-            newCount = proxy.rowCount()
-            if newCount != self.lastRowCounts.get(index, -1):
-                self.lastRowCounts[index] = newCount
-                self.reapplySpans(proxy, view)
+        # Only reapply spans if the number of visible rows changed
+        newCount = proxy.rowCount()
+        if newCount != self.lastRowCounts.get(index, -1):
+            self.lastRowCounts[index] = newCount
+            self.reapplySpans(proxy, view)
 
     def onControlRenamed(self, topLeft, bottomRight, roles, sourceModel):
         """
@@ -850,6 +901,13 @@ class App(QWidget):
             item.setText(shortName)
 
 def run():
+    for widget in QApplication.instance().allWidgets(): # Using allWidget() because AppInit is a parent of Maya
+        # Only independent widgets, can be accessed with topLevelWidgets()
+        if isinstance(widget, AppInit):
+            widget.close()
+            widget.deleteLater()
+            break
+
     parent = mayaWindow()
     window = AppInit(parent)
     window.show()

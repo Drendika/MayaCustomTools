@@ -3,5 +3,5 @@
     "Spine": ["spine", "chest", "pelvis", "hip", "torso", "waist", "root"],
     "Arms": ["arm", "shoulder", "clavicle", "elbow", "hand", "wrist", "scapula"],
     "Legs": ["leg", "thigh", "knee", "foot", "ankle", "toe", "ball", "heel"],
-    "Accessories": ["prop", "weapon", "cloth", "hair", "cape", "bag", "tail"]
+    "Props": ["prop", "weapon", "cloth", "hair", "cape", "bag", "tail"]
 }
