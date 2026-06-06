@@ -1,7 +1,25 @@
 {
-    "Head": ["head", "neck", "jaw", "eye", "face", "ear"],
-    "Spine": ["spine", "chest", "pelvis", "hip", "torso", "waist", "root"],
-    "Arms": ["arm", "shoulder", "clavicle", "elbow", "hand", "wrist", "scapula"],
-    "Legs": ["leg", "thigh", "knee", "foot", "ankle", "toe", "ball", "heel"],
-    "Props": ["prop", "weapon", "cloth", "hair", "cape", "bag", "tail"]
+    "Bipedal": {
+        "Head": ["head", "neck"],
+        "Torso": ["spine", "chest", "pelvis", "hip", "torso", "waist", "root", "cog"],
+        "Arms": ["arm", "shoulder", "clavicle", "hand", "wrist", "scapula"],
+        "Legs": ["leg", "thigh", "foot", "ankle", "heel"],
+        "Props": [
+		"prop", "weapon", "cloth", "hair",
+		"cape", "bag", "armor", "accessories", "blade", "necklace", "bag", "fabric"
+		]
+    },
+    "Quadruped": {
+        "Muzzle": ["head", "neck"],
+        "Body": ["spine", "chest", "hip", "torso", "waist", "root", "cog"],
+        "FrontLegs": [
+		"shoulder", "shldr", "paw", "frontscapula",
+		"legfront", "frontleg", "fore", "frontankle", "rollfront"
+		],
+        "BackLegs": ["rump", "hip", "backscapula", "legback", "backleg", "hind", "backankle", "rollback"],
+        "Tail": ["tail"],
+        "Props": ["prop", "weapon", "cloth", "hair", "cape", "bag", "armor", "accessories", "necklace"]
+    }
 }
+
+

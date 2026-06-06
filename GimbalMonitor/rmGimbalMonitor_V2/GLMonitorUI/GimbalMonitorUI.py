@@ -1,5 +1,5 @@
-from GimbalMonitor.rmGimbalMonitor_V2.GLMonitorUI.GimbalMonitorHelpMenu import (CheckForUpdates,
-                                                                                ContactWindow, AboutWindow)
+from GimbalMonitor.rmGimbalMonitor_V2.GLMonitorUI.GimbalMonitorMenus import (CheckForUpdates,
+                                                                             ContactWindow, AboutWindow)
 from GimbalMonitor.rmGimbalMonitor_V2.GLMonitorFunc import GimbalMonitorUtility
 from PySide2.QtWidgets import *
 from PySide2.QtCore import *
@@ -7,16 +7,25 @@ from PySide2.QtGui import *
 import maya.cmds as cmds
 import os
 
+import maya.api.OpenMaya as OpenMaya
+import time
+
 
 GROUP_ICONS_DIR = os.path.join(os.path.dirname(__file__), "..", "icons")
 
 GROUP_ICONS = {
     "Head":        os.path.join(GROUP_ICONS_DIR, "Head.png"),
-    "Spine":       os.path.join(GROUP_ICONS_DIR, "Spine.png"),
+    "Muzzle":      os.path.join(GROUP_ICONS_DIR, "Muzzle.png"),
+    "Torso":       os.path.join(GROUP_ICONS_DIR, "Torso.png"),
+    "Body":        os.path.join(GROUP_ICONS_DIR, "Body.png"),
     "Arms":        os.path.join(GROUP_ICONS_DIR, "Arms.png"),
+    "FrontLegs":   os.path.join(GROUP_ICONS_DIR, "FrontLegs.png"),
     "Legs":        os.path.join(GROUP_ICONS_DIR, "Legs.png"),
+    "BackLegs":    os.path.join(GROUP_ICONS_DIR, "BackLegs.png"),
     "Props":       os.path.join(GROUP_ICONS_DIR, "Props.png"),
+    "Tail":        os.path.join(GROUP_ICONS_DIR, "Tail.png"),
     "Other":       os.path.join(GROUP_ICONS_DIR, "Other.png"),
+    "Default":     os.path.join(GROUP_ICONS_DIR, "Logo_GMV2.png")
 }
 
 
@@ -53,6 +62,7 @@ class AppInit(QMainWindow):
         # Help
         menu_bar = self.menuBar()
         helpMenu = menu_bar.addMenu("Help")
+
         #helpMenuDoc = QAction("Documentation (Soon)", self)    # ← Не забудь додати
         # helpMenuDoc.triggered.connect(self.open_file)     # ← Не забудь додати
         #helpMenuChangeLog = QAction("Change Log (Soon)", self)     # ← Не забудь додати
@@ -70,6 +80,17 @@ class AppInit(QMainWindow):
         helpMenu.addSeparator()
         helpMenu.addAction(helpMenuContact)
         helpMenu.addAction(helpMenuAbout)
+
+        CheckForUpdates(parent=self, showOnStartup=True)
+
+        # Controls
+        controls = menu_bar.addMenu("Controls")
+        editControlsMenu = QAction("Edit display", self)
+        editControlsMenu.triggered.connect(self.editDisplay)
+        controls.addAction(editControlsMenu)
+
+    def editDisplay(self):
+        pass
 
     def onInitialize(self):
         shapes = cmds.ls(type="nurbsCurve", long=True)
@@ -104,7 +125,6 @@ class AppInit(QMainWindow):
     def OnAbout(self):
         dialog = AboutWindow(parent=self)
         dialog.exec_()
-
 
 class AppSetUp(QWidget):
     def __init__(self, ref, parent=None):
@@ -180,9 +200,10 @@ class CharacterEntry(QWidget):
         typeRow = QHBoxLayout()
         typeRow.addSpacing(66)
         self.typeCombo = QComboBox()
-        self.typeCombo.addItems(["Bipedal", "Quadrupedal"])
+        self.typeCombo.addItems(["Bipedal", "Quadruped"])
         typeRow.addWidget(self.typeCombo)
         mainLayout.addLayout(typeRow)
+
 
         self.selectBtn.clicked.connect(self.onSelect)
 
@@ -213,16 +234,20 @@ class CharacterEntry(QWidget):
         return None
 # ──────────────────────────────────────────────────────────
 
-def buildControlModel(transforms):
+def buildControlModel(transforms, charType):
     # Create the source data storage
     model = QStandardItemModel()
     model.setHorizontalHeaderLabels(["Group", "Name", "Rotation Order", "Gimbal Lock"])
 
     # Filter and categorize using the utilities module
-    grouped = GimbalMonitorUtility.categorizeAllControls(transforms)
+    grouped = GimbalMonitorUtility.categorizeAllControls(transforms, charType)
 
     # Populate rows systematically by iterating through the groups
-    groupOrder = ["Head", "Spine", "Arms", "Legs", "Props", "Other"]
+    if charType == "Bipedal":
+        groupOrder = ["Head", "Torso", "Arms", "Legs", "Props", "Other"]
+    else:
+        groupOrder = ["Muzzle", "Body", "FrontLegs", "BackLegs", "Tail", "Props", "Other"]
+
     for groupName in groupOrder:
         if groupName not in grouped:
             continue
@@ -232,7 +257,7 @@ def buildControlModel(transforms):
             percent, rotationOrder = GimbalMonitorUtility.getGimbalLockPercent(ctrl)
 
             onlyName = ctrl.split(":")[-1].split("|")[-1] # short name of the control (not a full path) for displaying.
-            # Wrap strings into QStandardItem instances for column formatting
+            # Wrap strings into QStandardItem instances
             itemGroup = QStandardItem(groupName)
             # Sets the flags for the group cells
             flagsItemGroup = itemGroup.flags()
@@ -240,6 +265,8 @@ def buildControlModel(transforms):
             # Icons for the group cells
             if groupName in GROUP_ICONS:
                 itemGroup.setIcon(QIcon(GROUP_ICONS[groupName]))
+            else:
+                itemGroup.setIcon(QIcon(GROUP_ICONS["Default"]))
             # Name column
             itemControlName = QStandardItem(onlyName)
             itemControlName.setTextAlignment(Qt.AlignCenter)
@@ -425,6 +452,7 @@ class RotationOrderDelegate(QStyledItemDelegate):
         if event.type() != QEvent.MouseButtonPress or event.button() != Qt.LeftButton:
             return False
 
+        print(self._activeMenu)
         if self._activeMenu is not None:
             self._activeMenu.close()
             self._activeMenu = None
@@ -438,7 +466,6 @@ class RotationOrderDelegate(QStyledItemDelegate):
 
         self._activeMenu = menu
         self._activeIndex = index
-        menu.aboutToHide.connect(self._onMenuHidden)
 
         view = option.widget
         cellRect = view.visualRect(index)
@@ -470,11 +497,6 @@ class RotationOrderDelegate(QStyledItemDelegate):
                 cmds.warning(f"Failed to set rotation order: {error}")
 
         return True  # tells Qt "I handled this click, don't do anything else"
-
-    def _onMenuHidden(self):
-        print(self._activeMenu)
-        self._activeMenu = None
-        self._activeIndex = None
 
 class GimbalDelegate(QStyledItemDelegate):
     def paint(self, painter, option, index):
@@ -564,10 +586,12 @@ class App(QWidget):
         self.tabs = None # Tabs itself
         self.timer = None
         self.tabData = {} # Stores the data about tabs (_buildTabContent)
+        self.MessageSystem = MessageSystem(self, characters)
         self.helpMenu = None
         self.searchBox = None
         self.lastRowCounts = {} # This is for merging rows in the name column (the end of updateGimbalData)
         self.missingControls = set() # This is for warning in the updateGimbalData
+
 
 
         self.setFocusPolicy(Qt.ClickFocus)
@@ -575,6 +599,7 @@ class App(QWidget):
 
         self.searchBoxArea()
         self.creatingTabs(characters)
+        self.MessageSystem.buildKnownControls()
         self.timerGimbal()
 
     def searchBoxArea(self):
@@ -599,24 +624,17 @@ class App(QWidget):
                 tabLayout = QVBoxLayout(tab)
                 self.tabs.addTab(tab, name)
                 # store charType on the tab widget for future use
-                tab.setProperty("charType", charType)
 
-                sourceModel = buildControlModel(controls)
+                sourceModel = buildControlModel(controls, charType)
                 self._buildTabContent(tabLayout, sourceModel, self.searchBox)
-        else:
-            #
-            tab = QWidget()
-            tabLayout = QVBoxLayout(tab)
-            self.tabs.addTab(tab, "Character_01")
-            sourceModel = buildControlModel([])
-            self._buildTabContent(tabLayout, sourceModel, self.searchBox)
 
     def timerGimbal(self):
         # live updates
         self.timer = QTimer()
         self.timer.setInterval(100)
         self.timer.timeout.connect(self.updateGimbalData)
-        self.timer.start()
+
+        self.MessageSystem.registerMayaCallbacks()
 
         QApplication.instance().focusChanged.connect(self.onFocusChanged)
 
@@ -625,9 +643,6 @@ class App(QWidget):
         if new is None:
             print("stop timer")
             self.timer.stop()
-        else:
-            if not self.timer.isActive():
-                self.timer.start()
 
     def closeEvent(self, event):
         QApplication.instance().focusChanged.disconnect(self.onFocusChanged)
@@ -636,6 +651,14 @@ class App(QWidget):
             print("stop timer")
             self.timer.deleteLater()
             self.timer = None
+
+        # Remove all Maya callbacks
+        for cbId in self.MessageSystem.attributeCallbackIds:
+            try:
+                OpenMaya.MMessage.removeCallback(cbId)
+            except Exception:
+                pass
+        self.MessageSystem.attributeCallbackIds.clear()
 
         for data in self.tabData.values():
             model = data.get("model")
@@ -668,8 +691,9 @@ class App(QWidget):
             lambda pos, v=view: self.onContextMenu(pos, v)
         )
 
-        # Updates the spans when the view (proxy model) changes (used search to hide/show rows)
+        # Updates the spans
         self.reapplySpans(proxy, view)
+        self.tabs.currentChanged.connect(lambda _: self.MessageSystem.buildKnownControls())
 
         # Delegates
         groupDelegate = GroupDelegate()
@@ -834,6 +858,8 @@ class App(QWidget):
             self.lastRowCounts[index] = newCount
             self.reapplySpans(proxy, view)
 
+        self.MessageSystem.timeElapsed()
+
     def onControlRenamed(self, topLeft, bottomRight, roles, sourceModel):
         """
         Triggers automatically when data inside the base model changes.
@@ -893,12 +919,133 @@ class App(QWidget):
                 item.setData(fullNewPath[0], Qt.UserRole)
             print(f"Successfully renamed {fullPath} to {actualNewName}")
 
+            self.MessageSystem.buildKnownControls()
+
         except Exception as error:
             # If the user typed invalid characters (like spaces), catch the error and reset UI
             cmds.warning(f"Failed to rename control: {error}")
             # Revert UI text back to its original short name state
             shortName = fullPath.split("|")[-1]
             item.setText(shortName)
+
+class MessageSystem:
+    def __init__(self, AppInstance, characters):
+        self.app = AppInstance
+        self.characters = characters
+        self.knownControlsDict = {}
+        self.lastChangeTime = 0.0  # Timestamp of the last detected rotation change
+        self.attributeCallbackIds = []  # Maya callback IDs for rotate attribute watching
+
+    def buildKnownControls(self):
+        tabIndex = self.app.tabs.currentIndex()
+        data = self.app.tabData.get(tabIndex)
+        if not data:
+            return
+
+        sourceModel = data["model"]
+        freshSet = set()  # new set each time, belongs to nobody yet
+
+        for row in range(sourceModel.rowCount()):
+            nameItem = sourceModel.item(row, 1)
+            if nameItem:
+                fullPath = nameItem.data(Qt.UserRole)
+                if fullPath:
+                    freshSet.add(fullPath)
+
+        self.knownControlsDict[tabIndex] = freshSet  # assign once, after the loop
+
+
+    def registerMayaCallbacks(self):
+        """
+        Registers two Maya-level callbacks:
+          1. SelectionChanged  — fires whenever the user selects something new.
+                                 We use it to attach attribute watchers to the
+                                 newly selected controls.
+          2. timeChanged       — fires on every timeline frame change (scrubbing
+                                 or playback). We use it to start the timer so
+                                 the display stays live while animating.
+        These are registered once when App is created and removed on close.
+        """
+        selCallback = OpenMaya.MEventMessage.addEventCallback(
+            "SelectionChanged", self._onSelectionChanged
+        )
+        timeCallback = OpenMaya.MEventMessage.addEventCallback(
+            "timeChanged", self._onTimeChanged
+        )
+        # Store IDs so we can remove them in closeEvent
+        self.attributeCallbackIds.append(selCallback)
+        self.attributeCallbackIds.append(timeCallback)
+
+    def _onSelectionChanged(self, *args):
+        """
+        Called by Maya whenever the selection changes.
+        Removes attribute callbacks from the old selection,
+        then registers new ones on any selected controls
+        that exist in the current tab's model.
+        """
+        # Only remove the attribute callbacks (everything after the first two),
+        # keeping the SelectionChanged and timeChanged callbacks at index 0 and 1.
+        for cbId in self.attributeCallbackIds[2:]:
+            OpenMaya.MMessage.removeCallback(cbId)
+        del self.attributeCallbackIds[2:]
+
+        selection = cmds.ls(sl=True, long=True) or []
+
+        for ctrl in selection:
+            if ctrl not in self.knownControlsDict[self.app.tabs.currentIndex()]:
+                continue
+
+
+            # Convert the string path to an MObject, which Maya's callback API requires
+            selectionList = OpenMaya.MSelectionList()
+            try:
+                selectionList.add(ctrl)
+            except Exception:
+                continue
+
+            mObject = selectionList.getDependNode(0)
+
+            cbId = OpenMaya.MNodeMessage.addAttributeChangedCallback(
+                mObject, self._onAttributeChanged
+            )
+            self.attributeCallbackIds.append(cbId)
+
+    def _onAttributeChanged(self, msg, plug, otherPlug, clientData):
+        """
+        Called by Maya when any attribute on a watched node changes.
+        Filter down to only rotation value changes using the msg bitmask,
+        then start the timer if it isn't already running.
+        """
+        # kAttributeSet means a value was set (this is what happens during rotation)
+        # Without this check we'd also fire on connections, locks, and other non-value changes.
+        if not (msg & OpenMaya.MNodeMessage.kAttributeSet):
+            return
+
+        # Only care about rotate attributes (rx, ry, rz, rotateX, rotateY, rotateZ)
+        plugName = plug.partialName()
+        if not plugName.startswith("r"):
+            return
+
+        self.lastChangeTime = time.time()
+
+        if not self.app.timer.isActive():
+            self.app.timer.start()
+
+    def _onTimeChanged(self, *args):
+        """
+        Called by Maya on every timeline frame change.
+        Starts the timer so the display updates during scrubbing and playback.
+        """
+        self.lastChangeTime = time.time()
+
+        if not self.app.timer.isActive():
+            self.app.timer.start()
+
+    def timeElapsed(self):
+        # Stop the timer if nothing has changed for 200ms
+        elapsed = (time.time() - self.lastChangeTime) * 1000
+        if elapsed > 200:
+            self.app.timer.stop()
 
 def run():
     for widget in QApplication.instance().allWidgets(): # Using allWidget() because AppInit is a parent of Maya

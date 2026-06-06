@@ -70,8 +70,9 @@ def shouldSkipControl(ctrl):
     return False
 
 
-def categorizeAllControls(controls):
-    grouped = {group: [] for group in CATEGORY_MAP}
+def categorizeAllControls(controls, charType):
+    categoryMap = CATEGORY_MAP.get(charType, {})
+    grouped = {group: [] for group in categoryMap}
     grouped["Other"] = []
 
 
@@ -79,10 +80,19 @@ def categorizeAllControls(controls):
         if shouldSkipControl(ctrl):
             continue
 
-        ctrl_lower = ctrl.lower()
+        allLocked = (
+                cmds.getAttr(f"{ctrl}.rotateX", lock=True) and
+                cmds.getAttr(f"{ctrl}.rotateY", lock=True) and
+                cmds.getAttr(f"{ctrl}.rotateZ", lock=True)
+        )
+        if allLocked:
+            continue
+
+        onlyName = ctrl.split(":")[-1].split("|")[-1]
+        ctrl_lower = onlyName.lower()
         matched = False
 
-        for group_name, keywords in CATEGORY_MAP.items():
+        for group_name, keywords in categoryMap.items():
             if any(keyword in ctrl_lower for keyword in keywords):
                 grouped[group_name].append(ctrl)
                 matched = True
@@ -91,9 +101,12 @@ def categorizeAllControls(controls):
         if not matched:
             grouped["Other"].append(ctrl)
 
+    print(grouped)
     return grouped
 
 def reloadConfig():
     global CATEGORY_MAP, SKIP_KEYWORDS
     CATEGORY_MAP  = loadConfig("category_map.json")
     SKIP_KEYWORDS = loadConfig("skip_keywords.json")
+
+

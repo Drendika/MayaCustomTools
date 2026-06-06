@@ -1,10 +1,12 @@
 [
-	"main", "global", "master", "root_ctrl", "world", "pelvis",
-	"pv", "pole", "polevector", "pole_vector",
-	"ikfk", "ik_fk", "switch", "settings",
+    "main", "global", "master", "root", "world", "all",
+	"pv", "pole", "polevector", "tweak",
+	"ikfk", "ik_fk", "fkik", "switch", "settings",
 	"space", "follow",
+	"knee", "toe", "ball", "footroll",
 	"vis", "visibility", "guide",
-	"hair", "strand", 
-	"face", "nose", "lip", "mouth", "cheek", "eyebrow", "brow", "ear", "eye", "iris", "jaw", "teeth", 
-	"finger", "thumb", "index", "middle", "ring", "pinky"
+	"forehead", "jowl", 
+	"face", "nose", "lip", "lid", "mouth", "cheek", "eyebrow", "brow", "ear", "eye", "iris", "jaw", "teeth", "tongu",
+	"sneer", "emote", "sync", "pinch", "angry", "happy", "sad", 
+	"finger", "thumb", "index", "middle", "ring", "pinky", "elbow", "spline"
 ]
