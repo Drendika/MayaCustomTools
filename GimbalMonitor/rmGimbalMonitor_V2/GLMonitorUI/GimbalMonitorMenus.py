@@ -3,15 +3,21 @@ GimbalMonitorMenus.py
 Menus, dialogs, and the Edit Controls window for rmGimbalMonitor.
 """
 
+from __future__ import annotations # converts all type hints to string literals
+from typing import TYPE_CHECKING # False during runtime
 
-from PySide2.QtGui    import (QIcon, QFont, QPixmap, QDrag, QPainter, QColor)
+if TYPE_CHECKING:
+    from GimbalMonitor.rmGimbalMonitor_V2.GLMonitorUI.GimbalMonitorUI import AppInit
+
+
+from PySide2.QtGui     import (QIcon, QFont, QPixmap, QDrag, QPainter, QColor, QPen)
 from PySide2.QtWidgets import (
     QMessageBox, QDialog, QVBoxLayout, QHBoxLayout,
     QLabel, QPushButton, QAction, QWidget, QScrollArea,
     QFrame, QSizePolicy, QMenu, QLineEdit, QLayout,
-    QApplication, QFileDialog, QToolButton, QComboBox
+    QApplication, QFileDialog, QToolButton, QComboBox, QFormLayout,
 )
-from PySide2.QtCore   import Qt, QTimer, Signal, QPoint, QRect, QSize, QMimeData
+from PySide2.QtCore   import Qt, QTimer, Signal, QPoint, QRect, QSize, QMimeData, QObject, QEvent
 from maya import cmds
 import urllib.request
 import webbrowser
@@ -21,20 +27,12 @@ import sys
 import os
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
-#  Documentation File
-# ═══════════════════════════════════════════════════════════════════════════════
-
-class DocumentationFile:
-    def __init__(self):
-        ...
-
 
 # ═══════════════════════════════════════════════════════════════════════════════
 #  VERSION / GITHUB
 # ═══════════════════════════════════════════════════════════════════════════════
 
-CURRENT_VERSION  = "0.0.9"
+CURRENT_VERSION  = "1.0.0"
 GITHUB_RELEASES  = "https://api.github.com/repos/Drendika/MayaCustomTools/releases"
 TOOL_TAG_PREFIX  = "rmGimbalMonitor-v"
 
@@ -44,14 +42,14 @@ TOOL_TAG_PREFIX  = "rmGimbalMonitor-v"
 # ═══════════════════════════════════════════════════════════════════════════════
 
 class CheckForUpdates(QDialog):
-    def __init__(self, parent=None, showOnStartup=False):
+    def __init__(self, parent: AppInit, showOnStartup: bool = False) -> None:
         super().__init__(parent)
         if showOnStartup:
             self._checkOnStartup(parent)
         else:
-            self.checkForUpdatesFunc()
+            self.checkForUpdatesFunc(parent)
 
-    def fetchLatestVersion(self):
+    def fetchLatestVersion(self): # possible to make staticmethod in the future if needed
         """
         Calls the GitHub API and finds the newest release
         tagged rmGimbalMonitor-vX.X.X.
@@ -65,8 +63,9 @@ class CheckForUpdates(QDialog):
                     "User-Agent": "rmGimbalMonitor"
                 }
             )
-            with urllib.request.urlopen(request, timeout=5) as response:
-                releases = json.loads(response.read().decode())
+            with urllib.request.urlopen(request, timeout=5) as response: # opening GitHub API with 5 seconds timeout
+                releases = json.loads(response.read().decode()) # decode() converts bytes(returned from server) to the
+                                                                # human readable text
 
             toolReleases = [release for release in releases
                             if release["tag_name"].startswith(TOOL_TAG_PREFIX)]
@@ -81,23 +80,23 @@ class CheckForUpdates(QDialog):
 
         except urllib.error.URLError:
             return None, "No internet connection or GitHub is unreachable."
-        except Exception as e:
-            return None, f"Unexpected error: {e}"
+        except Exception as error:
+            return None, f"Unexpected error: {error}"
 
-    def compareVersions(self, current, latest):
+    def compareVersions(self, latest: str, current: str) -> bool:
         """Returns True if latest is newer than current."""
-        def toTuple(v):
-            return tuple(int(x) for x in v.split("."))
+        def toTuple(string) -> tuple[int, int, int]:
+            return tuple(int(version) for version in string.split("."))
         return toTuple(latest) > toTuple(current)
 
-    def checkForUpdatesFunc(self, parentWidget=None):
+    def checkForUpdatesFunc(self, parent: AppInit):
         latestVersion, info = self.fetchLatestVersion()
         if latestVersion is None:
-            QMessageBox.warning(parentWidget, "Update Check Failed", info)
+            QMessageBox.warning(parent, "Update Check Failed", info)
             return
 
-        if self.compareVersions(CURRENT_VERSION, latestVersion):
-            msg = QMessageBox(parentWidget)
+        if self.compareVersions(latestVersion, CURRENT_VERSION, ):
+            msg = QMessageBox(parent)
             msg.setWindowTitle("Update Available")
             msg.setText(
                 f"A new version is available!\n\n"
@@ -110,11 +109,11 @@ class CheckForUpdates(QDialog):
                 webbrowser.open(info)
         else:
             QMessageBox.information(
-                parentWidget, "Up to Date",
+                parent, "Up to Date",
                 f"You are running the latest version ({CURRENT_VERSION})."
             )
 
-    def _checkOnStartup(self, parent):
+    def _checkOnStartup(self, parent: AppInit) -> None:
         latestVersion, releaseUrl = self.fetchLatestVersion()
         if latestVersion is None:
             return
@@ -124,12 +123,12 @@ class CheckForUpdates(QDialog):
             if skippedVersion == latestVersion:
                 return
 
-        if not self.compareVersions(CURRENT_VERSION, latestVersion):
-            return
+        if not self.compareVersions(latestVersion, CURRENT_VERSION):
+            return # return if current version is bigger then last
 
         QTimer.singleShot(5000, lambda: self._showUpdateDialog(parent, latestVersion, releaseUrl))
 
-    def _showUpdateDialog(self, parent, latestVersion, releaseUrl):
+    def _showUpdateDialog(self, parent: AppInit, latestVersion: str, releaseUrl: str):
         dialog = UpdateNotificationDialog(
             currentVersion=CURRENT_VERSION,
             latestVersion=latestVersion,
@@ -140,17 +139,17 @@ class CheckForUpdates(QDialog):
 
 
 class UpdateNotificationDialog(QDialog):
-    def __init__(self, currentVersion, latestVersion, releaseUrl, parent=None):
+    def __init__(self, currentVersion: str, latestVersion: str, releaseUrl: str, parent: AppInit):
         super().__init__(parent)
         self.setWindowTitle("Update Available")
         self.setFixedSize(340, 180)
-        self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
         self._latestVersion = latestVersion
 
         layout = QVBoxLayout(self)
         layout.setSpacing(10)
         layout.setContentsMargins(20, 20, 20, 20)
 
+        # ── Labels ────────────────────────────────────────────────────────────
         titleLabel = QLabel("A new version is available!")
         titleFont  = QFont()
         titleFont.setBold(True)
@@ -167,11 +166,12 @@ class UpdateNotificationDialog(QDialog):
         layout.addWidget(newLabel)
         layout.addStretch()
 
+        # ── Buttons ───────────────────────────────────────────────────────────
         buttonRow = QHBoxLayout()
         updateBtn = QPushButton("Update")
         remindBtn = QPushButton("Remind Me Later")
         neverBtn  = QPushButton("Never")
-        updateBtn.clicked.connect(lambda: self._onUpdate(releaseUrl))
+        updateBtn.clicked.connect(lambda: self._onUpdate(releaseUrl)) # no need to store url in the labda
         remindBtn.clicked.connect(self.reject)
         neverBtn.clicked.connect(self._onNever)
         buttonRow.addWidget(updateBtn)
@@ -179,11 +179,11 @@ class UpdateNotificationDialog(QDialog):
         buttonRow.addWidget(neverBtn)
         layout.addLayout(buttonRow)
 
-    def _onUpdate(self, releaseUrl):
+    def _onUpdate(self, releaseUrl) -> None:
         webbrowser.open(releaseUrl)
         self.accept()
 
-    def _onNever(self):
+    def _onNever(self) -> None:
         cmds.optionVar(stringValue=("rmGimbalMonitor_skipUpdateVersion", self._latestVersion))
         self.reject()
 
@@ -204,14 +204,16 @@ class ContactWindow(QDialog):
         self.setMinimumSize(300, 130)
         self.setMaximumSize(300, 130)
 
+        # ── Layouts ───────────────────────────────────────────────────────────
         mainVerticalLayout       = QVBoxLayout(self)
         horizontalLayoutName     = QHBoxLayout()
         horizontalLayoutEmail    = QHBoxLayout()
         horizontalLayoutLinkedIn = QHBoxLayout()
         horizontalLayoutGitHub   = QHBoxLayout()
-        for hl in (horizontalLayoutName, horizontalLayoutEmail, horizontalLayoutLinkedIn, horizontalLayoutGitHub):
-            mainVerticalLayout.addLayout(hl)
+        for layout in (horizontalLayoutName, horizontalLayoutEmail, horizontalLayoutLinkedIn, horizontalLayoutGitHub):
+            mainVerticalLayout.addLayout(layout) # A quick way to add multiple layouts to the main layout
 
+        # ── Labels ────────────────────────────────────────────────────────────
         nameLabel     = QLabel("Author: Remaniuk Mykyta aka Drendika")
         emailLabel    = QLabel("Mail: ")
         emailLink     = QLabel(f'<a href="{EMAIL}">drendika23@gmail.com</a>')
@@ -223,6 +225,7 @@ class ContactWindow(QDialog):
         for label in (emailLink, linkedinLink, gitLink):
             label.setOpenExternalLinks(True) # makes the links clickable
 
+        # ── Adding to the Layouts ──────────────────────────────────────────────
         mainVerticalLayout       = QVBoxLayout(self)
         horizontalLayoutName     = QHBoxLayout()
         horizontalLayoutEmail    = QHBoxLayout()
@@ -248,6 +251,7 @@ class ContactWindow(QDialog):
         horizontalLayoutGitHub.addStretch()
         mainVerticalLayout.addSpacing(10)
 
+        # ── Button ────────────────────────────────────────────────────────────
         closeBtn = QPushButton("Close")
         closeBtn.clicked.connect(self.accept)
         mainVerticalLayout.addWidget(closeBtn, alignment=Qt.AlignRight)
@@ -258,19 +262,21 @@ ICONS     = QIcon(os.path.join(ICONS_DIR, "Logo_GMV2.png"))
 
 
 class AboutWindow(QDialog):
-    def __init__(self, parent=None):
+    def __init__(self, parent: AppInit):
         super().__init__(parent)
         self.setWindowTitle("About rmGimbalMonitor")
         self.setMinimumSize(660, 200)
         self.setMaximumSize(660, 200)
 
-        mainVerticalLayout            = QVBoxLayout(self)
-        mainHorizontalLayout          = QHBoxLayout()
-        verticalLayoutText            = QVBoxLayout()
-        horizontalLayoutTextName      = QHBoxLayout()
-        horizontalLayoutTextVersion   = QHBoxLayout()
-        horizontalLayoutTextDesc      = QHBoxLayout()
+        # ── Layouts ───────────────────────────────────────────────────────────
+        mainVerticalLayout          = QVBoxLayout(self)
+        mainHorizontalLayout        = QHBoxLayout()
+        verticalLayoutText          = QVBoxLayout()
+        horizontalLayoutTextName    = QHBoxLayout()
+        horizontalLayoutTextVersion = QHBoxLayout()
+        horizontalLayoutTextDesc    = QHBoxLayout()
 
+        # ── Icon ──────────────────────────────────────────────────────────────
         mainVerticalLayout.addLayout(mainHorizontalLayout)
         iconLabel = QLabel()
         iconLabel.setPixmap(ICONS.pixmap(96, 96))
@@ -278,6 +284,7 @@ class AboutWindow(QDialog):
         mainHorizontalLayout.addSpacing(15)
         mainHorizontalLayout.addLayout(verticalLayoutText)
 
+        # ── Text ──────────────────────────────────────────────────────────────
         verticalLayoutText.addStretch(1)
         for layout in (
                 horizontalLayoutTextName,
@@ -314,6 +321,7 @@ class AboutWindow(QDialog):
             layout.addWidget(label)
             layout.addStretch(1)
 
+        # ── Button ────────────────────────────────────────────────────────────
         closeBtn = QPushButton("Close")
         closeBtn.clicked.connect(self.accept)
         mainVerticalLayout.addWidget(closeBtn, alignment=Qt.AlignRight)
@@ -326,7 +334,7 @@ class AboutWindow(QDialog):
 _CONFIG_DIR = os.path.join(os.path.dirname(__file__), "..", "config")
 
 # Hardcoded defaults used by "Reset to Default" actions.
-DEFAULT_SKIP_KEYWORDS = [
+DEFAULT_SKIP_KEYWORDS: list[str] = [
     "main", "global", "master", "root", "world", "all",
     "pv", "pole", "polevector", "tweak",
     "ikfk", "ik_fk", "fkik", "switch", "settings",
@@ -340,7 +348,10 @@ DEFAULT_SKIP_KEYWORDS = [
     "finger", "thumb", "index", "middle", "ring", "pinky", "elbow", "spline",
 ]
 
-DEFAULT_CATEGORY_MAP = {
+catMap   = dict[str, dict[str, list[str]]]
+catIcons = dict[str, dict[str, str]]
+
+DEFAULT_CATEGORY_MAP: catMap = {
     "Bipedal": {
         "Head":  ["head", "neck"],
         "Torso": ["spine", "chest", "pelvis", "hip", "torso", "waist", "cog"],
@@ -363,7 +374,7 @@ DEFAULT_CATEGORY_MAP = {
 }
 
 
-def _loadConfig(filename):
+def _loadConfig(filename: str) ->  catMap | list[str] :
     """Load a JSON config file, falling back to defaults if unavailable."""
     try:
         with open(os.path.join(_CONFIG_DIR, filename), "r") as file:
@@ -374,10 +385,10 @@ def _loadConfig(filename):
         return copy.deepcopy(DEFAULT_CATEGORY_MAP)
 
 
-def _saveConfig(filename, data):
+def _saveConfig(filename: str, data):
     """Save data to a JSON config file."""
     with open(os.path.join(_CONFIG_DIR, filename), "w") as file:
-        json.dump(data, file, indent=4)
+        json.dump(data, file, indent=4) # 4 spaces = one Tub
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -390,17 +401,17 @@ class FlowLayout(QLayout):
     Implements hasHeightForWidth so QScrollArea can auto-size the container height.
     """
 
-    def __init__(self, parent=None, hSpacing=6, vSpacing=6):
+    def __init__(self, parent: ControlsContainer, hSpacing: int=6, vSpacing: int=6):
         super().__init__(parent)
-        self._items    = []
+        self._items: list[str] = []
         self._hSpacing = hSpacing
         self._vSpacing = vSpacing
 
     # ── QLayout interface ──────────────────────────────────────────────────
-    def addItem(self, item):
+    def addItem(self, item: str):
         self._items.append(item)
 
-    def count(self):
+    def count(self) -> int:
         return len(self._items)
 
     def itemAt(self, item):
@@ -408,7 +419,7 @@ class FlowLayout(QLayout):
             return self._items[item]
         return None
 
-    def takeAt(self, item):
+    def takeAt(self, item: int) -> str | None:
         if 0 <= item < len(self._items):
             return self._items.pop(item)
         return None
@@ -560,7 +571,7 @@ class ControlElement(QFrame):
     SOURCE_SKIP     = "skip"
     removeRequested = Signal(str, str)   # keyword, source
 
-    def __init__(self, keyword, source, parent=None):
+    def __init__(self, keyword: str, source, parent: ControlsContainer):
         super().__init__(parent)
         self.keyword    = keyword
         self.source     = source
@@ -643,20 +654,37 @@ class ControlsContainer(QWidget):
     controlDropped = Signal(str, str)   # keyword, fromSource
     controlRemoved = Signal(str, str)   # keyword, source
 
-    _DropViz_ON  = ("background: rgba(90,138,170,0.10);"
-               " border: 1px dashed #5a8aaa; border-radius: 3px;")
-    _DropViz_OFF = "background: transparent; border: none;"
-
-    def __init__(self, targetName, parent=None):
+    def __init__(self, targetName: str, parent: CategoryRowWidget | ControlsEditWindow) -> None:
         super().__init__(parent)
         self.targetName = targetName
         self.setAcceptDrops(True)
+        self._highlighted = False
         self.setMinimumHeight(40)
-        self.setStyleSheet(self._DropViz_OFF)
+        self.setMinimumHeight(40)
 
-        self._flow = FlowLayout(hSpacing=5, vSpacing=5)
+        self._flow = FlowLayout(parent=self, hSpacing=5, vSpacing=5)
         self._flow.setContentsMargins(6, 6, 6, 6)
         self.setLayout(self._flow)
+
+        if targetName == "skip":
+            self.setStyleSheet("""
+            background: 12, 12, 12; border: none;
+            """)
+
+    def paintEvent(self, event):
+        """ Activates when drug object over the skip area or other categories rows"""
+        super().paintEvent(event)
+        if not self._highlighted:
+             return
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        pen = QPen(QColor("#5a8aaa"))
+        pen.setStyle(Qt.DashLine)
+        pen.setWidth(1)
+        painter.setPen(pen)
+        painter.setBrush(QColor(90, 138, 170, 25))   # 25 is a level of transparency. RGBA; A - Alpha channel
+        rect = self.rect().adjusted(3, 1, -1, -1)     # keeps the dashed line fully visible
+        painter.drawRoundedRect(rect, 3, 3)
 
     # ── control management ────────────────────────────────────────────────────
     def addControl(self, keyword):
@@ -685,6 +713,31 @@ class ControlsContainer(QWidget):
         width = max(self.width(), 200)
         return QSize(width, self.heightForWidth(width))
 
+    # ── scroll area helpers ────────────────────────────────────────────────
+    def _findScrollArea(self):
+        """Walk up the widget tree and return the nearest QScrollArea, or None."""
+        parent = self.parent()
+        while parent is not None:
+            if isinstance(parent, QScrollArea):
+                return parent
+            parent = parent.parent()
+        return None
+
+    def _notifyScrollHelper(self, viewportY):
+        """Translate a drag y-coordinate (already in viewport space) to the helper."""
+        scrollArea = self._findScrollArea()
+        if scrollArea is not None:
+            helper = getattr(scrollArea, "_dragScrollHelper", None)
+            if helper is not None:
+                helper.notifyDrag(viewportY) # Why do we pass the coordinates from separate function and not from dragMoveEvent directly?
+
+    def _stopScrollHelper(self):
+        scrollArea = self._findScrollArea()
+        if scrollArea is not None:
+            helper = getattr(scrollArea, "_dragScrollHelper", None)
+            if helper is not None:
+                helper.stopScroll()
+
     # ── drag-and-drop ──────────────────────────────────────────────────────
     def _parseText(self, mimeData):
         """Returns (source, keyword) or (None, None) if text is invalid."""
@@ -696,25 +749,54 @@ class ControlsContainer(QWidget):
         else:
             return None, None
 
-
     def dragEnterEvent(self, event):
         source, _ = self._parseText(event.mimeData())
         if source is not None and source != self.targetName:
-            self.setStyleSheet(self._DropViz_ON)
+            self._highlighted = True
+            self.update()
             event.acceptProposedAction()
 
     def dragLeaveEvent(self, event):
-        self.setStyleSheet(self._DropViz_OFF)
+        self._highlighted = False
+        self.update()
+        self._stopScrollHelper()
 
     def dragMoveEvent(self, event):
         event.acceptProposedAction()
+        # Map our local drag position into the viewport's coordinate system
+        # so the helper knows how close we are to the top / bottom edge.
+        scrollArea = self._findScrollArea()
+        if scrollArea is not None:
+            viewportY = self.mapTo(scrollArea.viewport(), event.pos()).y()
+            self._notifyScrollHelper(viewportY)
 
     def dropEvent(self, event):
-        self.setStyleSheet(self._DropViz_OFF)
+        self._highlighted = False
+        self.update()
+        self._stopScrollHelper()
         source, keyword = self._parseText(event.mimeData())
         if source is not None and source != self.targetName:
             self.controlDropped.emit(keyword, source)
             event.acceptProposedAction()
+
+    # ── wheel scroll propagation ───────────────────────────────────────────
+    def wheelEvent(self, event):
+        """
+        Explicitly forward wheel events to the enclosing QScrollArea's vertical
+        scrollbar.  Maya's event loop sometimes swallows wheel events before Qt's
+        built-in QScrollArea filter can catch them; this ensures scrolling always
+        works regardless of the host environment.
+        """
+        scrollArea = self._findScrollArea()
+        if scrollArea is not None:
+            bar   = scrollArea.verticalScrollBar()
+            delta = event.angleDelta().y() # Повертає об'єкт QPoint який показує куди і як сильно було прокручено коліщатко
+            # angleDelta returns multiples of 120 per notch; divide by 8 → ~15 px/notch,
+            # then multiply by 3 for a comfortable scroll speed.
+            bar.setValue(bar.value() - (delta // 8) * 3)
+            event.accept()
+        else:
+            super().wheelEvent(event)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -782,7 +864,7 @@ class CategoryRowWidget(QFrame):
         row.addWidget(div)
 
         # ── keyword controls ─────────────────────────────────────────────────
-        self._controls = ControlsContainer(categoryName)
+        self._controls = ControlsContainer(targetName=categoryName, parent=self)
         for keyword in keywords:
             self._controls.addControl(keyword)
 
@@ -794,6 +876,24 @@ class CategoryRowWidget(QFrame):
             lambda keyword, source, categoryName=categoryName: self.removed.emit(keyword, categoryName)
         )
         row.addWidget(self._controls, stretch=1)
+
+    # ── wheel scroll propagation ───────────────────────────────────────────
+    def wheelEvent(self, event):
+        """
+        Forward wheel events from the fixed-width left panel (icon + label area)
+        to the enclosing QScrollArea.  The ControlsContainer on the right already
+        has its own wheelEvent handler; this covers any pixel that lands outside it.
+        """
+        parent = self.parent()
+        while parent is not None:
+            if isinstance(parent, QScrollArea):
+                bar   = parent.verticalScrollBar()
+                delta = event.angleDelta().y()
+                bar.setValue(bar.value() - (delta // 8) * 3)
+                event.accept()
+                return
+            parent = parent.parent()
+        super().wheelEvent(event)
 
     # ── icon resolution ────────────────────────────────────────────────────
     def _resolveIcon(self, explicitPath):
@@ -814,52 +914,6 @@ class CategoryRowWidget(QFrame):
                 if not pixMap.isNull():
                     return pixMap.scaled(52, 52, Qt.KeepAspectRatio, Qt.SmoothTransformation)
         return None
-
-# ═══════════════════════════════════════════════════════════════════════════════
-#  ADD CATEGORY DIALOG
-# ═══════════════════════════════════════════════════════════════════════════════
-
-class AddNewControl(QDialog):
-    def __init__(self, source, parent=None):
-        super().__init__(parent)
-
-        self.setWindowTitle("Add New Control")
-        self.setFixedSize(390, 210)
-        self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
-
-        main = QHBoxLayout(self)
-
-        vertLayout = QVBoxLayout()
-
-        horizLayoutArea = QHBoxLayout()
-        areaLabel = QLabel("To:")
-        self.areaComboBox = QComboBox()
-        self.areaComboBox.addItems(["Skip", "Categories"])
-        self.areaComboBox.setCurrentIndex(0)
-        horizLayoutArea.addWidget(areaLabel)
-        horizLayoutArea.addWidget(self.areaComboBox)
-        vertLayout.addLayout(horizLayoutArea)
-
-
-        horizLayoutType = QHBoxLayout()
-        typeLabel = QLabel("Type:")
-        self.typeCombo = QComboBox()
-        self.typeCombo.addItems(["Bipedal", "Quadruped"])
-        if self.areaComboBox.currentIndex() == 0:
-            self.typeCombo.setEnabled(False)
-        else:
-            self.typeCombo.setEnabled(True)
-        horizLayoutType.addWidget(typeLabel)
-        horizLayoutType.addWidget(self.typeCombo)
-        vertLayout.addLayout(horizLayoutType)
-
-        horizLayoutCategory = QHBoxLayout()
-        typeLabel = QLabel("Category:")
-        self.categoryCombo = QComboBox()
-        if self.typeCombo.currentIndex() == 0:
-            self.categoryCombo.addItems(["Head", "Torso", "Arms", ])
-
-
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -891,12 +945,12 @@ class AddCategoryDialog(QDialog):
         previewBox = QFrame()
         previewBox.setObjectName("previewBox")
         previewBox.setFixedSize(155, 178)
-        previewBox.setStyleSheet("""
-            QFrame#previewBox {
-                border: 1px solid #4e4e4e;
-                border-radius: 4px;
-                background: #272727;
-            }"""
+        previewBox.setStyleSheet(
+            "QFrame#previewBox {"
+            "  border: 1px solid #4e4e4e;"
+            "  border-radius: 4px;"
+            "  background: #272727;"
+            "}"
         )
         pbVLayout = QVBoxLayout(previewBox)
         pbVLayout.setContentsMargins(8, 6, 8, 6)
@@ -1000,6 +1054,197 @@ class AddCategoryDialog(QDialog):
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+#  ADD CONTROL DIALOG
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class AddControlDialog(QDialog):
+    """
+    Small dialog for adding a single keyword to either the skip list or a
+    chosen category.
+
+    Skip mode  (categories=None) — returns a bare keyword string.
+    Cat mode   (categories=[…])  — returns (keyword, categoryName).
+    """
+
+    def __init__(self, categories=None, parent=None) -> None:
+        super().__init__(parent)
+        self.setWindowTitle("Add New Control")
+        self.setFixedWidth(310)
+        #self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
+
+        self._categories = categories
+        self._result     = None
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(14, 14, 14, 14)
+        layout.setSpacing(8)
+
+        # ── keyword field ─────────────────────────────────────────────────
+        keywordRowHLay = QHBoxLayout()
+        keywordLbl = QLabel("Keyword:")
+        keywordLbl.setFixedWidth(72)
+        self._nameEdit = QLineEdit()
+        self._nameEdit.setPlaceholderText("e.g. ctrl, spine, hand…")
+        keywordRowHLay.addWidget(keywordLbl)
+        keywordRowHLay.addWidget(self._nameEdit)
+        layout.addLayout(keywordRowHLay)
+
+        # ── category dropdown (category mode only) ─────────────────────────
+        if categories:
+            categoryRowHLay = QHBoxLayout()
+            categoryLbl = QLabel("Category:")
+            categoryLbl.setFixedWidth(72)
+            self._categoryCombo = QComboBox()
+            self._categoryCombo.addItems(categories)
+            categoryRowHLay.addWidget(categoryLbl)
+            categoryRowHLay.addWidget(self._categoryCombo)
+            layout.addLayout(categoryRowHLay)
+
+        layout.addSpacing(4)
+
+        # ── buttons ───────────────────────────────────────────────────────
+        btnsRowHLay = QHBoxLayout()
+        addBtn    = QPushButton("Add")
+        cancelBtn = QPushButton("Cancel")
+        addBtn.clicked.connect(self._onAdd)
+        cancelBtn.clicked.connect(self.reject)
+        btnsRowHLay.addStretch()
+        btnsRowHLay.addWidget(addBtn)
+        btnsRowHLay.addWidget(cancelBtn)
+        layout.addLayout(btnsRowHLay)
+
+        # Confirm with Enter key for quick keyboard workflow.
+        self._nameEdit.returnPressed.connect(self._onAdd)
+        self.adjustSize()
+
+    def _onAdd(self) -> None:
+        name: str = self._nameEdit.text().strip().lower()
+        if not name:
+            #QMessageBox.warning(self, "Missing Keyword", "Please enter a keyword.")
+            return
+        if self._categories:
+            self._result = (name, self._categoryCombo.currentText())
+        else:
+            self._result = name
+        self.accept()
+
+    def getResult(self) -> tuple[str, str]:
+        """Returns str (skip mode) or (str, str) (category mode), or None."""
+        return self._result
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  DRAG SCROLL HELPER
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class DragScrollHelper(QObject):
+    """
+    Attaches to a QScrollArea and provides two behaviours:
+
+    1. Auto-scroll during drag  — when a chip is dragged near the top or bottom
+       edge of the scroll area's viewport a QTimer fires at _INTERVAL ms and
+       nudges the vertical scroll bar by _STEP_PX until the drag leaves the zone
+       or is dropped.
+
+       ControlsContainer.dragMoveEvent calls notifyDrag(viewportY) directly
+       (having mapped its local coordinate into viewport space with mapTo).
+       The viewport event-filter below serves as a fallback for drag events that
+       land on non-drop-accepting areas (e.g. the stretch spacer at the bottom).
+
+    2. Mouse-wheel scrolling — Maya's event loop sometimes absorbs wheel events
+       before Qt's built-in QScrollArea filter sees them.  The viewport-level
+       event filter intercepts QEvent.Wheel and scrolls the bar explicitly,
+       guaranteeing the scroll area always responds to the wheel regardless of the
+       host environment.
+
+    Usage:
+        DragScrollHelper(myScrollArea)   # no need to store the return value
+
+    The helper stores itself as scrollArea._dragScrollHelper so that child
+    ControlsContainers can reach it with getattr(sa, "_dragScrollHelper", None).
+    """
+
+    _EDGE_PX  = 40   # px from top/bottom edge that triggers auto-scroll
+    _STEP_PX  = 12   # px scrolled per timer tick
+    _INTERVAL = 25   # ms per timer tick
+
+    def __init__(self, scrollArea: QScrollArea) -> None:
+        super().__init__(scrollArea)          # Qt parent → kept alive automatically
+        self._scrollArea = scrollArea
+        self._direction: int  = 0                  # -1 = scroll up | 0 = idle | +1 = scroll down
+        self._timer      = QTimer(self)
+        self._timer.setInterval(self._INTERVAL)
+        self._timer.timeout.connect(self._tick)
+
+        # Expose ourselves on the scroll area so child containers can call us.
+        scrollArea._dragScrollHelper = self
+
+        # Catch drag / wheel events that reach the bare viewport.
+        scrollArea.viewport().installEventFilter(self)
+
+    # ── public API ─────────────────────────────────────────────────────────
+    def notifyDrag(self, viewportY) -> None:
+        """
+        Called by ControlsContainer.dragMoveEvent with the drag y-position
+        already mapped into viewport coordinates.
+        Starts the auto-scroll timer if the position is inside an edge zone.
+        """
+        height = self._scrollArea.viewport().height()
+        if viewportY < self._EDGE_PX:
+            self._setDirection(-1)
+        elif viewportY > height - self._EDGE_PX:
+            self._setDirection(1)
+        else:
+            self.stopScroll()
+
+    def stopScroll(self) -> None:
+        """Stop any active auto-scroll (call on drag leave / drop)."""
+        self._timer.stop()
+        self._direction = 0
+
+    # ── Qt event filter (viewport-level fallback) ──────────────────────────
+    def eventFilter(self, obj, event):
+        if obj is not self._scrollArea.viewport(): # viewport це QWidget скрола
+            return False
+
+        eventType = event.type()
+
+        if eventType in (QEvent.DragEnter, QEvent.DragMove):
+            # Viewport receives drag events when no child widget accepts the drop
+            # (e.g. the stretch spacer gap at the bottom of the category list).
+            self.notifyDrag(event.pos().y())
+
+        elif eventType in (QEvent.DragLeave, QEvent.Drop):
+            self.stopScroll()
+
+        elif eventType == QEvent.Wheel:
+            # Intercept wheel events and forward directly to the scroll bar so
+            # that Maya cannot swallow them in its own event processing.
+            bar   = self._scrollArea.verticalScrollBar()
+            delta = event.angleDelta().y()
+            # angleDelta units: 120 per notch → divide by 8 gives ~15 px/notch,
+            # multiply by 3 for a comfortable three-line-per-notch feel.
+            bar.setValue(bar.value() - (delta // 8) * 3)
+            event.accept()
+            return True     # mark consumed so Maya doesn't also handle it
+
+        return False
+
+    # ── internal ───────────────────────────────────────────────────────────
+    def _setDirection(self, direction) -> None:
+        self._direction = direction
+        if not self._timer.isActive():
+            self._timer.start()
+
+    def _tick(self) -> None:
+        if self._direction == 0:
+            self._timer.stop()
+            return
+        bar = self._scrollArea.verticalScrollBar()
+        bar.setValue(bar.value() + self._direction * self._STEP_PX)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 #  MAIN EDIT-CONTROLS WINDOW
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -1007,54 +1252,57 @@ class ControlsEditWindow(QWidget):
     """
     Editor for skip_keywords.json and category_map.json.
 
-    All edits are staged in memory.  Click "Save All" to persist to disk,
+    All edits are staged in memory. "Save All" persist to disk,
     reload GimbalMonitorUtility's module-level globals, and emit configSaved
     so the main window can refresh its GROUP_ICONS and group ordering.
 
     A newly created category is immediately reflected in category_map.json
     after "Save All", which means categorizeAllControls() will include it on
-    the next monitoring session (or after re-initialization).
+    the next initialization.
     """
     configSaved = Signal()
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: AppInit) -> None:
         super().__init__(parent)
         self.setWindowTitle("Edit Controls")
         self.setMinimumWidth(550)
         self.setWindowFlags(Qt.Tool | Qt.WindowCloseButtonHint | Qt.WindowTitleHint)
 
         # Deep-copy from disk so edits are non-destructive until "Save All"
-        self._skipKeywords   = copy.deepcopy(_loadConfig("skip_keywords.json"))
-        self._categoryMap    = copy.deepcopy(_loadConfig("category_map.json"))
-        self._categoryIcons  = self._loadIconsCfg()
-        self._currentCharType = "Bipedal"
+        self._skipKeywords:  list[str] = copy.deepcopy(_loadConfig("skip_keywords.json"))
+        self._categoryMap:   catMap    = copy.deepcopy(_loadConfig("category_map.json"))
+        self._categoryIcons: catIcons  = self._loadIconsCfg()
+        self._currentCharType: str = "Bipedal"
 
         self._buildUI()
 
     # ── icon config ────────────────────────────────────────────────────────
-    def _loadIconsCfg(self):
-        path = os.path.join(_CONFIG_DIR, "category_icons.json")
+    def _loadIconsCfg(self) -> catIcons | dict:
+        path: str = os.path.join(_CONFIG_DIR, "category_icons.json")
         try:
             with open(path) as file:
                 return json.load(file)
         except Exception:
             return {}
 
-    def _saveIconsCfg(self):
-        path = os.path.join(_CONFIG_DIR, "category_icons.json")
+    def _saveIconsCfg(self) -> None:
+        path: str = os.path.join(_CONFIG_DIR, "category_icons.json")
         with open(path, "w") as file:
             json.dump(self._categoryIcons, file, indent=4)
 
     # ── top-level UI assembly ──────────────────────────────────────────────
-    def _buildUI(self):
+    def _buildUI(self) -> None:
         root = QVBoxLayout(self)
         root.setContentsMargins(10, 10, 10, 10)
         root.setSpacing(8)
         root.addWidget(self._buildSkipSection())
         root.addWidget(self._buildCategorySection())
+        #self.layout().activate()
+        self.adjustSize()
+        self.setFixedSize(self.size()) # Fixed size for now
 
     # ── SKIP KEYWORDS section ──────────────────────────────────────────────
-    def _buildSkipSection(self):
+    def _buildSkipSection(self) -> QFrame:
         skipBox = QFrame()
         skipBox.setObjectName("skipBox")
         skipBox.setStyleSheet(
@@ -1065,15 +1313,18 @@ class ControlsEditWindow(QWidget):
         vertLayout.setContentsMargins(8, 8, 8, 8)
         vertLayout.setSpacing(6)
 
-        # header row
+        # ── Header row ────────────────────────────────────────────────────
         horizLayout = QHBoxLayout()
 
+        # Label
         titleLbl = QLabel("Edit skip keywords")
         titleLbl.setStyleSheet("font-weight: bold; font-size: 12px;")
 
+        # Save button
         saveBtn = QPushButton("Save All", clicked=self._saveAll)
         saveBtn.setFixedHeight(22)
 
+        # More button
         moreBtn = self._makeMoreBtn()
         menu    = QMenu(moreBtn)
         menu.addAction("Reset to Default", self._resetSkip)
@@ -1087,48 +1338,25 @@ class ControlsEditWindow(QWidget):
         horizLayout.addWidget(moreBtn)
         vertLayout.addLayout(horizLayout)
 
-        # scrollable chip area
+        # ── scrollable area ───────────────────────────────────────────────
         self._skipScrollableArea = QScrollArea()
         self._skipScrollableArea.setWidgetResizable(True)
         self._skipScrollableArea.setMinimumHeight(70)
         self._skipScrollableArea.setMaximumHeight(150)
         self._skipScrollableArea.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self._skipScrollableArea.setStyleSheet(
-            "QScrollArea { border: none; background: #282828; border-radius: 2px; }"
+            "QScrollArea { border: none; background: #282828; border-radius: 2px; }"!!!
         )
 
-        self._skipControl = ControlsContainer(targetName="skip")
+        self._skipControl = ControlsContainer(targetName="skip", parent=self._skipScrollableArea)
         self._skipControl.controlDropped.connect(self._onDropToSkip)
         self._skipControl.controlRemoved.connect(self._onRemoveFromSkip)
         self._skipScrollableArea.setWidget(self._skipControl)
+        DragScrollHelper(self._skipScrollableArea)   # auto-scroll during drag
 
         vertLayout.addWidget(self._skipScrollableArea)
         self._rebuildSkip()
         return skipBox
-
-    # ── shared "⋯" button factory ──────────────────────────────────────────
-    @staticmethod
-    def _makeMoreBtn():
-        """ A circle button with extra options """
-        button = QToolButton()
-        button.setText("⋯")
-        button.setFixedSize(24, 24)
-        button.setPopupMode(QToolButton.InstantPopup)
-        button.setStyleSheet("""
-            QToolButton {
-                border: 1px solid #5a5a5a;
-                border-radius: 12px;
-                background: #383838;
-                color: #c0c0c0;
-                font-size: 14px;
-                font-weight: bold;
-                padding-bottom: 2px;
-            }
-            QToolButton:hover   { background: #464646; }
-            QToolButton:pressed { background: #262626; }
-            QToolButton::menu-indicator { width: 0; image: none; }
-        """)
-        return button
 
     # ── CATEGORIES section ─────────────────────────────────────────────────
     def _buildCategorySection(self):
@@ -1179,11 +1407,34 @@ class ControlsEditWindow(QWidget):
         self._categoryLayout.setContentsMargins(0, 0, 0, 0)
         self._categoryLayout.setSpacing(0)
         self._categoryScrollArea.setWidget(self._categoryScrollWidget)
+        DragScrollHelper(self._categoryScrollArea)  # auto-scroll during drag + wheel fix
 
         vertLayout.addWidget(self._categoryScrollArea)
         self._rebuildCategory()
         return CategoriesBox
 
+    @staticmethod
+    def _makeMoreBtn() -> QToolButton:
+        """ A circle button with extra options """
+        button = QToolButton()
+        button.setText("⋯")
+        button.setFixedSize(24, 24)
+        button.setPopupMode(QToolButton.InstantPopup)
+        button.setStyleSheet("""
+            QToolButton {
+                border: 1px solid #5a5a5a;
+                border-radius: 12px;
+                background: #383838;
+                color: #c0c0c0;
+                font-size: 14px;
+                font-weight: bold;
+                padding-bottom: 2px;
+            }
+            QToolButton:hover   { background: #464646; }
+            QToolButton:pressed { background: #262626; }
+            QToolButton::menu-indicator { width: 0; image: none; }
+        """)
+        return button
 
     # ── rebuild helpers ────────────────────────────────────────────────────
     def _rebuildSkip(self):
@@ -1304,8 +1555,19 @@ class ControlsEditWindow(QWidget):
             self._rebuildSkip()
 
     def _addSkipControl(self):
-        """Add a new Control_XX entry to skip keywords."""
-
+        """Open a dialog and add the typed keyword to the skip list."""
+        dialog = AddControlDialog(categories=None, parent=self)
+        if dialog.exec_() != QDialog.Accepted or not dialog.getResult():
+            return
+        keyword = dialog.getResult()
+        if keyword in self._skipKeywords:
+            QMessageBox.warning(
+                self, "Duplicate",
+                f'"{keyword}" is already in the skip list.'
+            )
+            return
+        self._skipKeywords.append(keyword)
+        self._rebuildSkip()
 
     def _resetCat(self):
         answer = QMessageBox.question(
@@ -1320,20 +1582,26 @@ class ControlsEditWindow(QWidget):
             self._rebuildCategory()
 
     def _addCatControl(self):
-        """Add a new Control_XX keyword to the first category of the current char type."""
-        charMap = self._categoryMap.get(self._currentCharType, {})
-        allKws = [k for keywords in charMap.values() for k in keywords]
-        existing = [keyword for keyword in allKws if keyword.startswith("Control_")]
-        nums = []
-        for keyword in existing:
-            try:
-                nums.append(int(keyword.split("_")[1]))
-            except (IndexError, ValueError):
-                pass
-        n = (max(nums) + 1) if nums else 1
-        newKw    = f"Control_{n:02d}"
-        firstCat = next(iter(charMap))
-        charMap[firstCat].append(newKw)
+        """Open a dialog to choose a category and type a keyword, then add it."""
+        charMap    = self._categoryMap.get(self._currentCharType, {})
+        categories = list(charMap.keys())
+        if not categories:
+            QMessageBox.information(
+                self, "No Categories",
+                "Add at least one category before adding controls."
+            )
+            return
+        dialog = AddControlDialog(categories=categories, parent=self)
+        if dialog.exec_() != QDialog.Accepted or not dialog.getResult():
+            return
+        keyword, catName = dialog.getResult()
+        if keyword in charMap.get(catName, []):
+            QMessageBox.warning(
+                self, "Duplicate",
+                f'"{keyword}" already exists in the "{catName}" category.'
+            )
+            return
+        charMap.setdefault(catName, []).append(keyword)
         self._rebuildCategory()
 
     def _openAddCategory(self):
