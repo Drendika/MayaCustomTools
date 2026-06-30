@@ -3,48 +3,54 @@ GimbalMonitorUI.py
 Main UI file.
 """
 
-from GimbalMonitor.rmGimbalMonitor_V2.GLMonitorUI.GimbalMonitorMenus import (
-    CheckForUpdates, ContactWindow, AboutWindow, ControlsEditWindow
+from GimbalMonitor.rmGimbalMonitor_V2.GLMonitorUI.MenuBar.Help import(
+    CheckForUpdates, ContactWindow, AboutWindow
 )
+from GimbalMonitor.rmGimbalMonitor_V2.GLMonitorUI.MenuBar.EditControls import ControlsEditWindow
+
 from GimbalMonitor.rmGimbalMonitor_V2.GLMonitorFunc import GimbalMonitorUtility
 import maya.api.OpenMaya as OpenMaya
-from PySide2.QtWidgets import *
-from PySide2.QtCore    import *
-from PySide2.QtGui     import *
+from PySide2.QtWidgets import (
+    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QStackedWidget, QAction, QPushButton, QLabel, QComboBox,
+    QScrollArea, QLineEdit, QStyledItemDelegate, QTableView, QTabWidget, QHeaderView, QAbstractItemView, QApplication,
+    QMenu
+)
+from PySide2.QtCore import Qt, QSortFilterProxyModel, QRect, QSize, QTimer, QModelIndex, QPoint
+from PySide2.QtGui import QCloseEvent, QWheelEvent, QStandardItemModel, QStandardItem, QIcon, QColor, QFontMetrics
 from maya.OpenMayaUI import MQtUtil
 import maya.cmds as cmds
+from pathlib import Path
 import shiboken2
 import time
 import json
-import os
 
-GROUP_ICONS_DIR: str = os.path.join(os.path.dirname(__file__), "..", "icons")
-_CONFIG_DIR: str        = os.path.join(os.path.dirname(__file__), "..", "config")
+GROUP_ICONS_DIR: Path = Path(__file__).parent.parent / "icons"
+_CONFIG_DIR: Path     = Path(__file__).parent.parent / "Config"
 
 
 def _buildGroupIcons():
     """
     Build the GROUP_ICONS mapping dynamically so that:
-      •  Built-in categories (Head, Torso, …) resolve to their {Name}.png files.
-      •  User-added categories resolve first via category_icons.json, then via
+      1)  Built-in categories (Head, Torso, …) resolve to their {Name}.png files.
+      2)  User-added categories resolve first via category_icons.json, then via
          a {CategoryName}.png filename lookup — the same fallback sequence used
          in CategoryRowWidget._resolveIcon.
-      •  "Other" and "Default" are always present.
+      3)  "Other" and "Default" are always present.
     Call this once at startup and again after configSaved.
     """
-    icons: dict[str, str] = {
-        "Other":   os.path.join(GROUP_ICONS_DIR, "Other.png"),
-        "Default": os.path.join(GROUP_ICONS_DIR, "Logo_GMV2.png"),
+    icons: dict[str, Path] = {
+        "Other":   GROUP_ICONS_DIR / "Other.png",
+        "Default": GROUP_ICONS_DIR / "Logo_GMV2.png",
     }
 
     # 1. User-set icons from category_icons.json (highest priority)
     try:
-        iconsJsonPath: str = os.path.join(_CONFIG_DIR, "category_icons.json")
+        iconsJsonPath: Path = _CONFIG_DIR / "category_icons.json"
         with open(iconsJsonPath) as file:
             userIcons = json.load(file)
         for _charType, catIcons in userIcons.items():
             for catName, iconPath in catIcons.items():
-                if os.path.exists(iconPath):
+                if Path(iconPath).is_file():
                     icons[catName] = iconPath
     except Exception as error:
         print(f"Icon config warning: {error}")
@@ -54,8 +60,8 @@ def _buildGroupIcons():
     for _charType, catMap in GimbalMonitorUtility.CATEGORY_MAP.items():
         for catName in catMap:
             if catName not in icons:
-                candidate = os.path.join(GROUP_ICONS_DIR, f"{catName}.png")
-                icons[catName] = candidate if os.path.exists(candidate) else icons["Default"]
+                candidate = GROUP_ICONS_DIR / f"{catName}.png"
+                icons[catName] = candidate if candidate.is_file() else icons["Default"]
 
     return icons
 
@@ -95,10 +101,10 @@ class AppInit(QMainWindow):
         menu_bar = self.menuBar()
         helpMenu = menu_bar.addMenu("Help")
 
-        #helpMenuChangeLog = QAction("Change Log (Soon)", self)     # ← Не забудь додати
-        # helpMenuChangeLog.triggered.connect(self.open_file)      # ← Не забудь додати
-        helpMenuDoc = QAction("Documentation", self)
-        helpMenuDoc.triggered.connect(self.docFile)
+        #helpMenuChangeLog = QAction("Change Log (Soon)", self)      # ← Не забудь додати
+        # helpMenuChangeLog.triggered.connect(self.open_file)        # ← Не забудь додати
+        helpMenuDoc = QAction("Documentation", self)           # ← Не забудь додати
+        helpMenuDoc.triggered.connect(self.docFile)                 # ← Не забудь додати
         helpMenuUpdates = QAction("Check for Updates...", self)
         helpMenuUpdates.triggered.connect(self.onCheckForUpdates)
         helpMenuContact = QAction("Contact", self)
@@ -107,7 +113,7 @@ class AppInit(QMainWindow):
         helpMenuAbout.triggered.connect(self.OnAbout)
 
         #helpMenu.addAction(helpMenuChangeLog)  # ← Не забудь додати
-        helpMenu.addAction(helpMenuDoc)
+        helpMenu.addAction(helpMenuDoc)         # ← Не забудь додати
         helpMenu.addAction(helpMenuUpdates)
         helpMenu.addSeparator()
         helpMenu.addAction(helpMenuContact)
@@ -181,7 +187,7 @@ class AppInit(QMainWindow):
         pass
 
     def onCheckForUpdates(self):
-        CheckForUpdates()
+        CheckForUpdates(self)
 
     def closeEvent(self, event: QCloseEvent) -> None:
         """This is for closing thr window from the Init Stage"""
@@ -202,7 +208,7 @@ class AppSetUp(QWidget):
     def __init__(self, AppInitInstance: AppInit) -> None:
         super().__init__(AppInitInstance)
         self.AppInitInstance  = AppInitInstance
-        self.characterEntries = []
+        self.characterEntries: list[QWidget] = []
         mainLayout = QVBoxLayout(self)
         self.setStyleSheet("""
             QLabel {
@@ -298,7 +304,7 @@ class CharacterEntry(QWidget):
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
 
-        self.controls = []
+        self.controls: list[str] = []
 
         mainLayout = QVBoxLayout(self)
         mainLayout.setContentsMargins(0, 4, 0, 4)
@@ -378,12 +384,13 @@ def buildControlModel(controls: list[str], charType: str) -> QStandardItemModel:
 
             # Icons for the group cells from GROUP_ICONS
             iconPath = GROUP_ICONS.get(groupName, GROUP_ICONS.get("Default", ""))
-            if iconPath and os.path.exists(iconPath):
-                itemGroup.setIcon(QIcon(iconPath))
+            if iconPath and Path(iconPath).is_file():
+                print(type(iconPath))
+                itemGroup.setIcon(QIcon(str(iconPath)))
             else:
                 defaultPath = GROUP_ICONS.get("Default", "")
-                if defaultPath and os.path.exists(defaultPath):
-                    itemGroup.setIcon(QIcon(defaultPath))
+                if defaultPath and Path(defaultPath).is_file():
+                    itemGroup.setIcon(QIcon(str(defaultPath)))
 
             # Name column
             itemControlName = QStandardItem(onlyName)
@@ -774,7 +781,7 @@ class App(QWidget):
                          tabLayout: QVBoxLayout,
                          sourceModel: QStandardItemModel,
                          searchBox: QLineEdit
-                         ):
+                         ) -> None:
 
         proxy = ControlFilterProxyModel()
         proxy.setSourceModel(sourceModel)
@@ -845,13 +852,13 @@ class App(QWidget):
     def _onSearchChanged(self,
                          proxy: ControlFilterProxyModel ,
                          view: GimbalTableView,
-                         tabIndex: int):
+                         tabIndex: int) -> None:
         """Merging rows on textChanged"""
         self.reapplySpans(proxy, view)
         # Sync the lastRowCounts so the timer doesn't fire again needlessly.
         self.lastRowCounts[tabIndex] = proxy.rowCount()
 
-    def timerGimbal(self):
+    def timerGimbal(self) -> None:
         # live updates
         self.timer = QTimer()
         self.timer.setInterval(100)
@@ -859,12 +866,12 @@ class App(QWidget):
         self.MessageSystem.registerMayaCallbacks()
         QApplication.instance().focusChanged.connect(self.onFocusChanged)
 
-    def onFocusChanged(self, old, new):
+    def onFocusChanged(self, old, new) -> None:
         # new is None when the entire Maya application loses focus
         if new is None:
             self.timer.stop()
 
-    def closeEvent(self, event: QCloseEvent):
+    def closeEvent(self, event: QCloseEvent) -> None:
         QApplication.instance().focusChanged.disconnect(self.onFocusChanged)
         if self.timer is not None:
             self.timer.stop()
@@ -886,7 +893,7 @@ class App(QWidget):
         super().closeEvent(event)
 
     # ────────────────────────────── context menu ────────────────────────────
-    def onContextMenu(self, pos: QPoint, view: GimbalTableView):
+    def onContextMenu(self, pos: QPoint, view: GimbalTableView) -> None:
         index: QModelIndex = view.indexAt(pos)
         if not index.isValid() or index.column() != 1:
             return
