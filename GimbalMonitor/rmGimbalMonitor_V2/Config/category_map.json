@@ -1,25 +1,97 @@
 {
     "Bipedal": {
-        "Head": ["head", "neck"],
-        "Torso": ["spine", "chest", "pelvis", "hip", "torso", "waist", "root", "cog"],
-        "Arms": ["arm", "shoulder", "clavicle", "hand", "wrist", "scapula"],
-        "Legs": ["leg", "thigh", "foot", "ankle", "heel"],
+        "Head": [
+            "head",
+            "neck"
+        ],
+        "Torso": [
+            "spine",
+            "chest",
+            "pelvis",
+            "hip",
+            "torso",
+            "waist",
+            "cog"
+        ],
+        "Arms": [
+            "arm",
+            "shoulder",
+            "clavicle",
+            "hand",
+            "wrist",
+            "scapula"
+        ],
+        "Legs": [
+            "leg",
+            "thigh",
+            "foot",
+            "ankle",
+            "heel"
+        ],
         "Props": [
-		"prop", "weapon", "cloth", "hair",
-		"cape", "bag", "armor", "accessories", "blade", "necklace", "bag", "fabric"
-		]
+            "prop",
+            "weapon",
+            "cloth",
+            "hair",
+            "cape",
+            "bag",
+            "armor",
+            "accessories",
+            "blade",
+            "necklace",
+            "fabric"
+        ],
+        "tail": [
+            "tail"
+        ]
     },
     "Quadruped": {
-        "Muzzle": ["head", "neck"],
-        "Body": ["spine", "chest", "hip", "torso", "waist", "root", "cog"],
+        "Muzzle": [
+            "head",
+            "neck"
+        ],
+        "Body": [
+            "spine",
+            "chest",
+            "hip",
+            "torso",
+            "waist",
+            "cog"
+        ],
         "FrontLegs": [
-		"shoulder", "shldr", "paw", "frontscapula",
-		"legfront", "frontleg", "fore", "frontankle", "rollfront"
-		],
-        "BackLegs": ["rump", "hip", "backscapula", "legback", "backleg", "hind", "backankle", "rollback"],
-        "Tail": ["tail"],
-        "Props": ["prop", "weapon", "cloth", "hair", "cape", "bag", "armor", "accessories", "necklace"]
+            "shoulder",
+            "shldr",
+            "paw",
+            "frontscapula",
+            "legfront",
+            "frontleg",
+            "fore",
+            "frontankle",
+            "rollfront"
+        ],
+        "BackLegs": [
+            "rump",
+            "hip",
+            "backscapula",
+            "legback",
+            "backleg",
+            "hind",
+            "backankle",
+            "rollback"
+        ],
+        "Tail": [
+            "tail"
+        ],
+        "Props": [
+            "prop",
+            "weapon",
+            "cloth",
+            "hair",
+            "cape",
+            "bag",
+            "armor",
+            "accessories",
+            "necklace"
+        ]
     }
 }
-
-

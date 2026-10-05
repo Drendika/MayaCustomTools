@@ -16,7 +16,7 @@ def removeWindow() -> None:
     for widget in widgets:
         if widget.objectName() == OBJECT_NAME or widget.windowTitle() == WINDOW_NAME:
             widget.close()
-            #widget.deleteLater() # Use deleteLater() if you are not using Qt.WA_DeleteOnClose
+            widget.deleteLater() # Use deleteLater() if you are not using Qt.WA_DeleteOnClose
 
             # Be aware, if anything try to use already deleted object (for example QTimer.singleShot)
             # you will get an  RuntimeError: Internal C++ object (nameOfTheObject) already deleted
@@ -28,10 +28,10 @@ def deletePackage() -> None:
         if name.startswith(PACKAGE_NAME):
             sys.modules.pop(name, None)
 
-removeWindow()
+#removeWindow()
 deletePackage()
 
 # Тут вставляємо свій імпорт
-from GimbalMonitor.rmGimbalMonitor_V2.GLMonitorUI import GimbalMonitorUI
+from GimbalMonitor.rmGimbalMonitor_V2.ui import mainWindow
 
 GimbalMonitorUI.run()

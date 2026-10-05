@@ -1,5 +1,5 @@
 # rmGimbalMonitor
-# Version: PB 1.GLMonitorFunc
+# Version: PB 1.core
 # Date: 22/04/2026
 #
 # By Remaniuk Mykyta aka Drendika
@@ -157,7 +157,7 @@ def startGimbalMonitor():
     inViewMessageWasOn = cmds.optionVar(query='inViewMessageEnable')
     if not inViewMessageWasOn:
         cmds.optionVar(intValue=('inViewMessageEnable', 1))
-        print("In-View Messages enabled for Gimbal GLMonitorFunc.")
+        print("In-View Messages enabled for Gimbal core.")
 
     # Watch for selection changes. Sets up attribute watcher on new selection.
     newID = cmds.scriptJob(
@@ -169,7 +169,7 @@ def startGimbalMonitor():
     showGimbalLock(selection[0])
 
     cmds.inViewMessage(
-        amg="Gimbal GLMonitorFunc <span style='color:#E9FA2F;'>started</span>",
+        amg="Gimbal core <span style='color:#E9FA2F;'>started</span>",
         pos='topCenter',
         fontSize=13,
         fade=True
@@ -197,7 +197,7 @@ def stopGimbalMonitor():
     cmds.inViewMessage(clear='topCenter')
 
     cmds.inViewMessage(
-        amg="Gimbal GLMonitorFunc <span style='color:#FF4444;'>stopped</span>",
+        amg="Gimbal core <span style='color:#FF4444;'>stopped</span>",
         pos='topCenter',
         fontSize=13,
         fade=True
