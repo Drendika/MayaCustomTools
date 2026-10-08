@@ -40,15 +40,13 @@
             "blade",
             "necklace",
             "fabric"
-        ],
-        "tail": [
-            "tail"
         ]
     },
     "Quadruped": {
         "Muzzle": [
             "head",
-            "neck"
+            "neck",
+            "nose"
         ],
         "Body": [
             "spine",

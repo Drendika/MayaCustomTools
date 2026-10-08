@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 #  VERSION / GITHUB
 # ══════════════════════════════════════════════════════════════════════════════
 
-CURRENT_VERSION  = "0.0.1"
+CURRENT_VERSION  = "1.0.0"
 GITHUB_RELEASES  = "https://api.github.com/repos/Drendika/MayaCustomTools/releases"
 TOOL_TAG_PREFIX  = "rmGimbalMonitor-v"
 
@@ -113,7 +113,7 @@ class CheckForUpdates:
         """
         Manual "Check for Updates" action, triggered from a menu.
         Fetches the latest version and, if a newer one exists, shows the
-        UIUpdatesNotificationManual dialog with a Yes/No choice.
+        UIUpdatesNotificationManual dialogue with a Yes/No choice.
         """
         latest_version, release_url = self.fetchLatestVersion()
         if latest_version is None:
@@ -170,7 +170,7 @@ class CheckForUpdates:
     @staticmethod
     def _showUpdateDialog(parent: None | MainWindow, latest_version: str, release_url: str) -> None:
         """
-        This function shows a pop-up dialog showing the update available.
+        This function shows a pop-up dialogue showing the update available.
         """
         dialog = UIUpdatesNotificationStartup(
             current_version=CURRENT_VERSION,
@@ -293,7 +293,7 @@ class UIUpdatesNotificationStartup(QDialog):
     def _onNever(self) -> None:
         """
         Saves the current latest version into a Maya optionVar so
-        _checkOnStartup can recognize it next time and skip the popup,
+        _checkOnStartup can recognise it next time and skip the popup,
         without needing to remember every version the user has ever seen.
         """
         cmds.optionVar(stringValue=("rmGimbalMonitor_skipUpdateVersion", self._latest_version))
@@ -399,7 +399,7 @@ class AboutWindow(QDialog):
         main_h_layout.addLayout(layout_v_text)
 
         # ── Text ──────────────────────────────────────────────────────────────
-        # Stretches on both sides vertically center the text block next to the icon
+        # Stretches on both sides vertically centre the text block next to the icon
         layout_v_text.addStretch(1)
         for layout in (
                 layout_h_text_name,

@@ -1,11 +1,10 @@
-# setup_logger.py
-# Logging system for the entire tool.
+"""
+setup_logger.py
+Logging system for the entire tool.
+"""
 
 import logging
 from pathlib import Path
-
-# Якщо використовував DEBUG, то поставив рівень на DEBUG (logger.setLevel(logging.DEBUG))
-# Якщо випускаєш у реліз, то повертай тільки на помилки (logger.setLevel(logging.WARNING))
 
 _LOG_DIR: Path = Path(__file__).parent / "Logs"
 _LOG_PATH: Path = _LOG_DIR / "GimbalMonitor_LOG.log"
@@ -28,15 +27,16 @@ def setupLogger(name: str) -> logging.Logger:
         logger.removeHandler(handler)
 
     fileHandler = logging.FileHandler(_LOG_PATH, mode="w")
-    #fileHandler.setLevel(logging.WARNING) # TODO Зміни перед релізом
-    fileHandlerFormatter = logging.Formatter('%(levelname)s: %(filename)s: %(message)s %(asctime)s',
-                                  datefmt='%d/%m/%Y %H:%M:%S')
+    fileHandler.setLevel(logging.DEBUG) # TODO Зміни перед релізом
+    fileHandlerFormatter = logging.Formatter("%(levelname)s: %(filename)s: %(message)s")
+    # fileHandlerFormatter = logging.Formatter('%(levelname)s: %(filename)s: %(message)s %(asctime)s',
+    #                               datefmt='%d/%m/%Y %H:%M:%S')
     fileHandler.setFormatter(fileHandlerFormatter)
     logger.addHandler(fileHandler)
 
     streamHandler = logging.StreamHandler()
-    #streamHandler.setLevel(logging.DEBUG) # TODO Зміни перед релізом
-    streamHandlerFormatter = logging.Formatter('%(levelname)s: %(message)s')
+    streamHandler.setLevel(logging.WARNING) # TODO Зміни перед релізом
+    streamHandlerFormatter = logging.Formatter("%(levelname)s: %(message)s")
     streamHandler.setFormatter(streamHandlerFormatter)
     logger.addHandler(streamHandler)
 

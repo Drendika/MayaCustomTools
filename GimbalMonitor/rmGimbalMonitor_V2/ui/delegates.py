@@ -38,7 +38,7 @@ class GroupDelegate(QStyledItemDelegate):
 
         # Clamp the cell rect to the visible viewport area.
         # A spanned group cell (from reapplySpans) can be much taller than the
-        # visible table area — without clamping, Qt would still try to center
+        # visible table area — without clamping, Qt would still try to centre
         # the icon in the full (huge) span, pushing it off-screen while scrolling.
         if option.widget:
             viewport_height = option.widget.height() # The height of the visible area of the cell
@@ -72,7 +72,7 @@ class GroupDelegate(QStyledItemDelegate):
         icon_size = QSize(max_icon_size, max_icon_size)
         pixmap = icon.pixmap(icon_size)
 
-        # Treat icon + gap + text as one block, center the whole block in visible_rect
+        # Treat icon + gap + text as one block, centre the whole block in visible_rect
         text_height = 20
         gap = 4
         block_height = icon_size.height() + gap + text_height
@@ -237,7 +237,7 @@ class GimbalDelegate(QStyledItemDelegate):
             return
 
         rect = option.rect
-        # Color thresholds: green = safe, yellow/orange = getting close,
+        # Colour thresholds: green = safe, yellow/orange = getting close,
         # red = gimbal-locked
         if percent_data < 30:
             color = QColor(0, 255, 0)    # Green
@@ -290,7 +290,9 @@ class GimbalDelegate(QStyledItemDelegate):
             painter.drawRect(bar_x, bar_y, bar_width, bar_height)
 
         # Warning Icon
+        # appeared = False
         if percent_data >= 80:
+            # appeared = True
             logger.info(f"Warning sign appeared.")
             warnRect = QRect(bar_x + bar_width + 4, rect.y() - 7, 20, rect.height()) # 4 is a padding
             # 7 padding for y, to make rect on one level with progress bar
@@ -301,8 +303,9 @@ class GimbalDelegate(QStyledItemDelegate):
             painter.setFont(warn_font)
             painter.drawText(warnRect, Qt.AlignLeft | Qt.AlignTop, "!")
 
-        if percent_data < 80:
-            logger.info(f"Warning sign disappeared.")
+        # if percent_data < 80 and appeared:
+        #     logger.info(f"Warning sign disappeared.")
+        # TODO Знак оклику має зникати тільки якщо він був видимим до цього
 
 
         painter.restore()

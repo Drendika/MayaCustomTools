@@ -27,7 +27,7 @@ rotation_orders: dict[int, tuple[str, str]] = {
 }
 
 # ────────────────── Gimbal Lock calculations  ─────────────────────────────────
-def get_gimbal_lock_percent(obj: str) -> tuple[float, str]:
+def get_gimbal_lock_percent(control: str) -> tuple[float, str]:
     """
     Computes how close the object is to a gimbal lock state (0% - 100%).
 
@@ -40,14 +40,14 @@ def get_gimbal_lock_percent(obj: str) -> tuple[float, str]:
     # Extract the object's matrix and wrap it in an OpenMaya transformation matrix.
     mTransform = OpenMaya.MTransformationMatrix(
         OpenMaya.MMatrix(
-            cmds.xform(obj, query=True, matrix=True, objectSpace=True)
+            cmds.xform(control, query=True, matrix=True, objectSpace=True)
         )
     )
     # Query the custom rotation order attribute of the object.
-    order_index: int = cmds.getAttr(f"{obj}.rotateOrder")
+    order_index: int = cmds.getAttr(f"{control}.rotateOrder")
     rotation_order, middle_axis = rotation_orders[order_index]
     # Extract Euler angles from the matrix and reorder them to match the object's rotation order.
-    euler = mTransform.rotation(asQuaternion=False)
+    euler: OpenMaya.MEulerRotation = mTransform.rotation(asQuaternion=False)
     euler.reorderIt(order_index)
     # ────────────────── Gimbal Lock Mathematical Evaluation  ──────────────────
     # Convert the middle axis angle from radians to degrees
@@ -66,7 +66,7 @@ def _load_json(filename: str) -> Any:
     filepath: Path = CONFIG_DIR / filename
 
     if not filepath.is_file():
-        logger.warning(f"Build-in JSON file not found: {filepath}")  # Possible problem
+        logger.critical(f"Build-in JSON file not found: {filepath}")
         raise FileNotFoundError(f"Built-in config file not found: {filepath}")
 
     with open(filepath, "r") as file:
@@ -90,7 +90,7 @@ SKIP_KEYWORDS: list[str] = load_skip_keywords()
 
 
 
-def should_skip_control(ctrl: str) -> bool:
+def shouldSkipControl(ctrl: str) -> bool:
     """
     Checks if a control should be skipped based on SKIP_KEYWORDS.
     Strips namespaces and DAG paths before evaluating.
@@ -103,7 +103,7 @@ def should_skip_control(ctrl: str) -> bool:
     return False
 
 
-def categorize_all_controls(controls: list[str], charType: str) -> dict[str, list[str]]:
+def categorizeAllControls(controls: list[str], charType: str) -> dict[str, list[str]]:
     """
     Groups controls into predefined categories based on the character type.
     Skips ignored controls or those with all rotation axes locked.
@@ -114,7 +114,7 @@ def categorize_all_controls(controls: list[str], charType: str) -> dict[str, lis
     grouped["Other"] = []
 
     for ctrl in controls:
-        if should_skip_control(ctrl):
+        if shouldSkipControl(ctrl):
             continue # Skip the current loop and start the next one
 
         # If control's rotations are locked, control is skipped.

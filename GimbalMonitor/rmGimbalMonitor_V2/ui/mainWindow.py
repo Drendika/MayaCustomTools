@@ -9,6 +9,7 @@ import logging
 from pathlib import Path
 
 import maya.api.OpenMaya as OpenMaya2
+from maya.OpenMayaUI import MQtUtil
 import maya.cmds as cmds
 
 import shiboken2  # type: ignore[import-untyped]
@@ -19,7 +20,6 @@ from PySide2.QtWidgets import (  # type: ignore[import-untyped]
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QStackedWidget, QAction, QPushButton, QLabel, QComboBox,
     QScrollArea, QLineEdit, QTableView, QTabWidget, QHeaderView, QAbstractItemView, QApplication,
     QMenu, QMenuBar)
-from maya.OpenMayaUI import MQtUtil
 
 from GimbalMonitor.rmGimbalMonitor_V2.core import logic
 from GimbalMonitor.rmGimbalMonitor_V2.ui.MenuBar.editControls import ControlsEditWindow
@@ -98,9 +98,9 @@ class MainWindow(QMainWindow):
     Key responsibilities include:
     - Constructing and managing the top menu bar (Help, Controls).
     - Managing the instantiation and display of the ControlsEditWindow.
-    - Handling the initialization logic to verify scene selection before
+    - Handling the initialisation logic to verify scene selection before
       launching the main monitoring view.
-    - Ensuring proper cleanup of UI elements and Maya callbacks upon closing.
+    - Ensuring proper clean-up of UI elements and Maya callbacks upon closing.
     """
     def __init__(self, parent: None | QMainWindow = None) -> None:
         super().__init__(parent)
@@ -114,7 +114,7 @@ class MainWindow(QMainWindow):
         character_v_lay = QVBoxLayout(central)
         character_v_lay.setContentsMargins(0, 0, 0, 0)
 
-        self.setWindowTitle("rmGimbalMonitor_V2_DevBuild") # TODO Змінити назву перед релізом
+        self.setWindowTitle("rmGimbalMonitor_V2") # TODO Змінити назву перед релізом
         self.setFixedSize(650, 600)
 
         self.stacked_widget = QStackedWidget()
@@ -160,7 +160,7 @@ class MainWindow(QMainWindow):
     def editDisplay(self) -> None:
         """
         Opens or brings the Edit Controls window to the foreground.
-        Initializes the ControlsEditWindow if it hasn't been created yet.
+        Initialises the ControlsEditWindow if it hasn't been created yet.
         """
         if self._edit_window is None:
             self._edit_window = ControlsEditWindow(parent=self)
@@ -189,7 +189,7 @@ class MainWindow(QMainWindow):
         have valid names assigned.
         """
         shapes: list[str] = cmds.ls(type="nurbsCurve", long=True)
-        if not shapes: # TODO Лагодь це гімно (Згідно з правилом Деметри)
+        if not shapes: # FIXME Лагодь це гімно (Згідно з правилом Деметри)
             self.app_setup.un_init_label.setText("No controls found in the scene.")
             QApplication.beep()
             self.app_setup.un_init_label.setProperty("state", "NoControls")
@@ -252,7 +252,7 @@ class MainWindow(QMainWindow):
     # noinspection PyMethodOverriding
     def closeEvent(self, event: QCloseEvent) -> None:
         """
-        Handles cleanup operations when the application window is closed.
+        Handles clean-up operations when the application window is closed.
 
         Ensures that active Maya scene callbacks are safely removed to prevent
         memory leaks or application crashes, stops any running UI update timers,
@@ -277,7 +277,7 @@ class AppSetup(QWidget):
         - Presenting drop-downs or selection fields for character types and names.
         - Displaying validation status labels (e.g., unInitLabel) to indicate
           whether the current scene state is ready.
-        - Collecting user inputs required to categorize controls and initialize
+        - Collecting user inputs required to categorise controls and initialise
           the main monitoring view (App class).
         """
     def __init__(self, MainWindowInstance: MainWindow) -> None:
@@ -828,14 +828,14 @@ class GimbalTableView(QTableView):
 
 def buildControlModel(controls: list[str], char_type: str) -> QStandardItemModel:
     """
-    Builds a QStandardItemModel containing categorized controls for the table view.
+    Builds a QStandardItemModel containing categorised controls for the table view.
     Populates rows with group icons, control names, rotation orders, and gimbal lock data.
     """
     model = QStandardItemModel()
     model.setHorizontalHeaderLabels(["Group", "Name", "Rotation Order", "Gimbal Lock"])
 
-    # Filter and categorize using the utilities module
-    grouped = logic.categorize_all_controls(controls, char_type)
+    # Filter and categorise using the utilities module
+    grouped = logic.categorizeAllControls(controls, char_type)
 
     # Dynamic group order: keys from CATEGORY_MAP for this character type, then Other
     char_categories = list(logic.CATEGORY_MAP.get(char_type, {}).keys())
@@ -896,17 +896,17 @@ class ControlFilterProxyModel(QSortFilterProxyModel):
     Filters table rows by group name, control name, or gimbal lock percentage
     (using '>' or '<' operators).
     """
-    def __init__(self, parent: None | MainUITable = None):
+    def __init__(self, parent: None | MainUITable = None) -> None:
         super().__init__(parent)
         self.filter_text = ""
         # True = show; False = hide
 
-    def setFilterText(self, text):
+    def setFilterText(self, text) -> None:
         self.filter_text = text.lower().strip()
         self.invalidateFilter() # tells Qt to re-check every row
 
     # noinspection PyMethodOverriding
-    def filterAcceptsRow(self, source_row: int, source_parent): # sourceParent is for QTreeView. Unused in our case.
+    def filterAcceptsRow(self, source_row: int, source_parent) -> bool: # sourceParent is for QTreeView. Unused in our case.
         if not self.filter_text:
             return True # empty search = show everything
 
@@ -938,28 +938,6 @@ class ControlFilterProxyModel(QSortFilterProxyModel):
 # ────────────────────── Trigger system ───────────────────────────────────────
 
 def run() -> None:
-    # for widget in QApplication.instance().topLevelWidgets(): # Using allWidget() because AppInit is a child of Maya
-    #     # Only independent widgets, can be accessed with topLevelWidgets()
-    #     if widget.objectName() == MainWindow.objectName() or isinstance(widget, MainWindow):
-    #         # If there is AppInit, close it
-    #         widget.close()
-    #         break
     parent = maya_window()
     window = MainWindow(parent)
     window.show()
-
-    # def run() -> None:
-    #     for widget in QApplication.instance().topLevelWidgets():  # Using allWidget() because AppInit is a child of Maya
-    #         # Only independent widgets, can be accessed with topLevelWidgets()
-    #         if widget.objectName() == MainWindow.objectName() or isinstance(widget, MainWindow):
-    #             # If there is AppInit, close it
-    #             if widget.isHidden():
-    #                 widget.show()
-    #             else:
-    #                 widget.raise_()
-    #                 widget.activateWindow()
-    #     parent = mayaWindow()
-    #     window = MainWindow(parent)
-    #     window.show()
-
-# Не забудь прибрати коментар в run() перед релізом
