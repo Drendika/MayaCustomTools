@@ -1,6 +1,6 @@
 """
 logic.py
-Calculations and sorting for the UI.
+Calculations and sorting for UI.
 """
 
 from __future__ import annotations
@@ -81,12 +81,12 @@ def load_skip_keywords() -> list[str]:
 
 def reloadConfig() -> None:
     global CATEGORY_MAP, SKIP_KEYWORDS
-    CATEGORY_MAP = _load_json("category_map.json")
-    SKIP_KEYWORDS = _load_json("skip_keywords.json")
+    CATEGORY_MAP = load_category_map()
+    SKIP_KEYWORDS = load_skip_keywords()
 
-CONFIG_DIR: Path = Path(__file__).parent.parent / "Config"
-CATEGORY_MAP: dict[str, dict[str, list[str]]] = load_category_map()
-SKIP_KEYWORDS: list[str] = load_skip_keywords()
+CONFIG_DIR = Path(__file__).parent.parent / "Config"
+CATEGORY_MAP = load_category_map()
+SKIP_KEYWORDS = load_skip_keywords()
 
 
 
@@ -115,6 +115,7 @@ def categorizeAllControls(controls: list[str], charType: str) -> dict[str, list[
 
     for ctrl in controls:
         if shouldSkipControl(ctrl):
+            logger.debug(f"Skipping control: {ctrl} (skip list)")
             continue # Skip the current loop and start the next one
 
         # If control's rotations are locked, control is skipped.
@@ -124,6 +125,7 @@ def categorizeAllControls(controls: list[str], charType: str) -> dict[str, list[
                 cmds.getAttr(f"{ctrl}.rotateZ", lock=True)
         )
         if all_locked:
+            logger.debug(f"Skipping control: {ctrl} (rotations are locked)")
             continue
 
         only_name = ctrl.split(":")[-1].split("|")[-1] # TODO Зроби тут одну функцію

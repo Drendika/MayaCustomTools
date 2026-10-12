@@ -3,9 +3,11 @@ mainWindow.py
 Main UI file.
 """
 from __future__ import annotations
-from typing import TypeAlias
 import json
 import logging
+from typing import TYPE_CHECKING, Any, Tuple, List
+if TYPE_CHECKING:
+    from typing import TypeAlias
 from pathlib import Path
 
 import maya.api.OpenMaya as OpenMaya2
@@ -60,9 +62,9 @@ def _buildGroupIcons() -> dict[str, Path]: # TODO Як можна покращи
                     if Path(icon_path).is_file():
                         icons[cat_name] = icon_path # <- Added custom icons.
                     else:
-                        logger.warning(f"User-defined icon file not found: {icon_path}") # Possible problem
+                        logger.warning(f"User-defined icon file not found: {icon_path}")
         except Exception as error:
-            logger.warning(f"Custom Icons JSON may be invalid: {custom_icons_json_path}"
+            logger.error(f"Custom Icons JSON may be invalid: {custom_icons_json_path}"
                              f"Error: {error}")
             pass
     else:
@@ -258,6 +260,7 @@ class MainWindow(QMainWindow):
         memory leaks or application crashes, stops any running UI update timers,
         and properly closes open child windows (like the Edit Controls window).
         """
+        logger.debug("Closing main application window %s", type(self).__name__)
         if self.app is not None:
             self.app.closeEvent(event) # Calling App's closeEvent
         if self._edit_window is not None:
@@ -362,7 +365,7 @@ class AppSetup(QWidget):
             results.append(data)
         return results
 
-Entry: TypeAlias = tuple[str, str, list[str]]
+Entry: TypeAlias = Tuple[str, str, List[str]]
 
 class CustomQComboBox(QComboBox):
     """
@@ -474,7 +477,7 @@ class MainUITable(QWidget):
         super().__init__(parent)
         self.tabs:  None | QTabWidget = None # Will hold the QTabWidget once created
         self.timer: None | QTimer     = None # QTimer used to refresh gimbal values
-        self.tab_data: dict = {} # Per-tab data: model, proxy, view, delegates
+        self.tab_data: dict[int, dict[str, Any]] = {} # Per-tab data: model, proxy, view, delegates
         self.message_system = MessageSystem(self, characters)
         self.search_box: None | QLineEdit = None
         self.last_row_counts: dict  = {} # Tracks row counts, used to avoid unnecessary span updates
@@ -539,6 +542,10 @@ class MainUITable(QWidget):
         menu and delegates, then stores everything in self.tab_data so other
         methods can find it later by tab index.
         """
+        if self.tabs is None:
+
+            return
+
         proxy = ControlFilterProxyModel(parent=self) # Also stored in the tab_data
         proxy.setSourceModel(source_model)
         search_box.textChanged.connect(proxy.setFilterText)
@@ -565,7 +572,7 @@ class MainUITable(QWidget):
 
         # ──────────────────── Controls for MessageSystem ─────────────────────
         # TODO Навіщо я взагалі кожного разу перебудовую buildKnownControls()... Перероби на іншу систему
-        self.tabs.currentChanged.connect(lambda _: self.message_system.buildKnownControls())  # type: ignore[union-attr]
+        self.tabs.currentChanged.connect(lambda _: self.message_system.buildKnownControls())
 
         # ───────────────────────────── Delegates ─────────────────────────────
         group_delegate  = GroupDelegate()
@@ -577,7 +584,7 @@ class MainUITable(QWidget):
 
         # ──────────────────────────── References ─────────────────────────────
         # Saving references so timer and other methods can reach them by tab index
-        tab_index: int = self.tabs.count() - 1  # type: ignore[union-attr]
+        tab_index: int = self.tabs.count() - 1
         # count() return the total number of tabs. If we have 3 tabs in total, and we want to switch to third tab, 3 - 1 = 2
         # Indices start at 0 = first tab;  1 - 1 = 0
         #                  1 = second tab; 2 - 1 = 1
@@ -645,6 +652,7 @@ class MainUITable(QWidget):
           - removes all Maya callbacks (selection, time, attribute changes)
           - clears all table models and tab data to release memory
         """
+        logger.debug("Closing app stage %s", type(self).__name__)
         if self.timer is not None:
             self.timer.stop()
             self.timer.deleteLater()
@@ -691,7 +699,10 @@ class MainUITable(QWidget):
         then shifts keyboard/OS focus to the viewport so the user can immediately
         use viewport hotkeys without clicking into it manually.
         """
-        tab_index = self.tabs.currentIndex()  # type: ignore[union-attr]
+        if self.tabs is None:
+            logger.critical("Tabs is not created yet.")
+            return
+        tab_index = self.tabs.currentIndex()
         source_model = self.tab_data[tab_index]["model"]
         proxy = self.tab_data[tab_index]["proxy"]
         # The clicked index belongs to the proxy (filtered) model, so we map
@@ -775,9 +786,19 @@ class MainUITable(QWidget):
         refreshes group spans only when the visible row count actually changed
         (avoids unnecessary redraw work).
         """
-        logger.info("Updating gimbal data")
-        index: int = self.tabs.currentIndex()  # type: ignore[union-attr]
-        data: dict = self.tab_data.get(index)
+        logger.debug("Updating gimbal data.")
+
+        if self.tabs is None:
+            logger.critical("Tabs is not created yet.")
+            return
+
+        index = self.tabs.currentIndex()
+        data = self.tab_data.get(index)
+
+        if data is None:
+            logger.critical("No tab data found for index %s.", index)
+            return
+
         source_model = data["model"]
         proxy = data["proxy"]
         view = data["view"]

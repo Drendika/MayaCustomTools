@@ -60,7 +60,7 @@ class GroupDelegate(QStyledItemDelegate):
         max_icon_size = min(visible_rect.width() - 10, visible_rect.height() - 24, 64)
         if max_icon_size < 35:
             # Not enough room for a readable icon — fall back to text-only display
-            logger.info(f"{name}: Max icon size is less than 35. Displaying only text.")
+            logger.debug(f"{name}: Max icon size is less than 35. Displaying only text.")
             group_font = option.font
             group_font.setPointSize(12)
             group_font.setBold(True)
@@ -282,7 +282,7 @@ class GimbalDelegate(QStyledItemDelegate):
             painter.setBrush(color)
             painter.drawRect(bar_x + 1, bar_y + 1, fill_width - 2, bar_height - 2)
             # TODO Придумай як тут можна зробити можливим логування ім'я контрола
-            logger.info(f"Redraw percentage: {percent_data}")
+            logger.debug(f"Redraw percentage: {percent_data}")
 
             # Redraw outline over the fill for clean borders
             painter.setPen(QPen(QColor(0, 0, 0), 2))
@@ -293,7 +293,7 @@ class GimbalDelegate(QStyledItemDelegate):
         # appeared = False
         if percent_data >= 80:
             # appeared = True
-            logger.info(f"Warning sign appeared.")
+            logger.debug(f"Warning sign appeared.")
             warnRect = QRect(bar_x + bar_width + 4, rect.y() - 7, 20, rect.height()) # 4 is a padding
             # 7 padding for y, to make rect on one level with progress bar
             painter.setPen(QColor(255, 0, 0)) # red

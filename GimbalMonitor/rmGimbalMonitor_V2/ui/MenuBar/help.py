@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 #  VERSION / GITHUB
 # ══════════════════════════════════════════════════════════════════════════════
 
-CURRENT_VERSION  = "1.0.0"
+CURRENT_VERSION  = "2.0.0"
 GITHUB_RELEASES  = "https://api.github.com/repos/Drendika/MayaCustomTools/releases"
 TOOL_TAG_PREFIX  = "rmGimbalMonitor-v"
 
@@ -80,7 +80,7 @@ class CheckForUpdates:
                             if release["tag_name"].startswith(TOOL_TAG_PREFIX)]
 
             if not tool_releases:
-                logger.error("No releases found for rmGimbalMonitor.")
+                logger.warning("No releases found for rmGimbalMonitor.")
                 return None, "No releases found for rmGimbalMonitor."
 
             latest = tool_releases[0] # Because of the list comprehension we need to use index [0]
@@ -89,12 +89,12 @@ class CheckForUpdates:
             release_url = latest.get("html_url", "")
 
             if not release_url:
-                logger.error("We couldn't get html_url from GitHub: \"\"")
+                logger.warning("We couldn't get html_url from GitHub: \"\"")
             return version, release_url
 
         except urllib.error.URLError:
             # Raised when there's no internet connection or GitHub can't be reached
-            logger.error(f"No internet connection or GitHub is unreachable: {urllib.error.URLError}")
+            logger.warning(f"No internet connection or GitHub is unreachable: {urllib.error.URLError}")
             return None, f"No internet connection or GitHub is unreachable: {urllib.error.URLError}"
 
         except Exception as error:
@@ -128,7 +128,7 @@ class CheckForUpdates:
             release_url=release_url,
             parent=parent
             )
-            logger.info(
+            logger.debug(
                 f"A new version is available. "
                 f"Current version: {CURRENT_VERSION}, latest version: {latest_version}"
             )
@@ -138,7 +138,7 @@ class CheckForUpdates:
                 parent, "Up to Date",
                 f"You are running the latest version ({CURRENT_VERSION})."
             )
-            logger.warning(f"Version is up to date: {CURRENT_VERSION}")
+            logger.debug(f"Version is up to date: {CURRENT_VERSION}")
 
     def _checkOnStartup(self, parent: None | MainWindow = None) -> None:
         """
@@ -155,11 +155,11 @@ class CheckForUpdates:
         if cmds.optionVar(exists="rmGimbalMonitor_skipUpdateVersion"):
             skipped_version = cmds.optionVar(query="rmGimbalMonitor_skipUpdateVersion")
             if self.versionTuple(latest_version) == self.versionTuple(skipped_version):
-                logger.info(f"Skipping version: {latest_version}.")
+                logger.debug(f"Skipping version: {latest_version}.")
                 return
 
         if not self.versionTuple(latest_version) > self.versionTuple(CURRENT_VERSION):
-            logger.error(f"Current version is bigger then last: "
+            logger.debug(f"Current version is bigger then last: "
                          f"CURRENT_VERSION: {CURRENT_VERSION}, latest_version: {latest_version}")
             return # return if current version is bigger then last
 
@@ -178,7 +178,7 @@ class CheckForUpdates:
             release_url=release_url,
             parent=parent
         )
-        logger.info("UIUpdatesNotificationStartup pop-up appear.")
+        logger.debug("UIUpdatesNotificationStartup pop-up appear.")
         dialog.exec_()
 
 class UIUpdatesNotificationManual(QDialog):
@@ -223,13 +223,13 @@ class UIUpdatesNotificationManual(QDialog):
 
     def _onYes(self, release_url) -> None:
         """Opens the GitHub release page in the user's default browser."""
-        logger.info(f"Updates Manual: User selected: Yes")
+        logger.debug(f"Updates Manual: User selected: Yes")
         webbrowser.open(release_url)
-        logger.info(f"Opening browser for update: {release_url}")
+        logger.debug(f"Opening browser for update: {release_url}")
         self.accept()
 
     def _onNo(self) -> None:
-        logger.info(f"Updates Manual: User selected: No")
+        logger.debug(f"Updates Manual: User selected: No")
         self.reject()
 
 
@@ -282,12 +282,12 @@ class UIUpdatesNotificationStartup(QDialog):
     def _onUpdate(self, release_url) -> None:
         """Opens the GitHub release page in the user's default browser."""
         webbrowser.open(release_url)
-        logger.info(f"Updates Startup: User selected: Update")
-        logger.info(f"Updates Startup: Opening browser for update: {release_url}")
+        logger.debug(f"Updates Startup: User selected: Update")
+        logger.debug(f"Updates Startup: Opening browser for update: {release_url}")
         self.accept()
 
     def _remindLater(self) -> None:
-        logger.info(f"Updates Startup: User selected: Remind me later")
+        logger.debug(f"Updates Startup: User selected: Remind me later")
         self.reject()
 
     def _onNever(self) -> None:
@@ -297,8 +297,8 @@ class UIUpdatesNotificationStartup(QDialog):
         without needing to remember every version the user has ever seen.
         """
         cmds.optionVar(stringValue=("rmGimbalMonitor_skipUpdateVersion", self._latest_version))
-        logger.info("Updates Startup: User selected: Never")
-        logger.info(f"Updates Startup: Saved latest version {self._latest_version} to Maya optionVar")
+        logger.debug("Updates Startup: User selected: Never")
+        logger.debug(f"Updates Startup: Saved latest version {self._latest_version} to Maya optionVar")
         self.reject()
 
 
@@ -359,7 +359,7 @@ class ContactWindow(QDialog):
 
 
     def _onClose(self) -> None:
-        logger.info(f"ContactWindow: User selected: Close")
+        logger.debug(f"ContactWindow: User selected: Close")
         self.accept()
 
 
@@ -442,7 +442,7 @@ class AboutWindow(QDialog):
         main_v_layout.addWidget(close_btn, alignment=Qt.AlignRight)
 
     def _onClose(self) -> None:
-        logger.info(f"AboutWindow: User selected: Close")
+        logger.debug(f"AboutWindow: User selected: Close")
         self.accept()
 
 if __name__ == "__main__":

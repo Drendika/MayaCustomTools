@@ -26,7 +26,9 @@
             "thigh",
             "foot",
             "ankle",
-            "heel"
+            "heel",
+			"calf"
+			
         ],
         "Props": [
             "prop",
@@ -39,7 +41,8 @@
             "accessories",
             "blade",
             "necklace",
-            "fabric"
+            "fabric",
+			"staff"
         ]
     },
     "Quadruped": {
@@ -54,7 +57,8 @@
             "hip",
             "torso",
             "waist",
-            "cog"
+            "cog",
+			"belly"
         ],
         "FrontLegs": [
             "shoulder",
@@ -65,7 +69,8 @@
             "frontleg",
             "fore",
             "frontankle",
-            "rollfront"
+            "rollfront",
+			"frontbody"
         ],
         "BackLegs": [
             "rump",
@@ -75,7 +80,8 @@
             "backleg",
             "hind",
             "backankle",
-            "rollback"
+            "rollback",
+			"backbody"
         ],
         "Tail": [
             "tail"

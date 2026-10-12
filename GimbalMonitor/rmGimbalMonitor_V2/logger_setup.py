@@ -28,7 +28,7 @@ def setupLogger(name: str) -> logging.Logger:
 
     fileHandler = logging.FileHandler(_LOG_PATH, mode="w")
     fileHandler.setLevel(logging.DEBUG) # TODO Зміни перед релізом
-    fileHandlerFormatter = logging.Formatter("%(levelname)s: %(filename)s: %(message)s")
+    fileHandlerFormatter = logging.Formatter("%(levelname)s: [%(filename)s:%(lineno)d]: %(message)s")
     # fileHandlerFormatter = logging.Formatter('%(levelname)s: %(filename)s: %(message)s %(asctime)s',
     #                               datefmt='%d/%m/%Y %H:%M:%S')
     fileHandler.setFormatter(fileHandlerFormatter)

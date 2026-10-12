@@ -53,5 +53,9 @@
     "ring",
     "pinky",
     "elbow",
-    "spline"
+    "spline",
+	"nostril", 
+	"frown", 
+	"smile", 
+	"chin"
 ]

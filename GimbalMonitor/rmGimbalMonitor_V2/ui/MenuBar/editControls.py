@@ -5,9 +5,10 @@ Edit Controls window for editing the items (controls) in the table .
 
 from __future__ import annotations  # converts all type hints to string literals
 
-from typing import TYPE_CHECKING, TypeAlias,  overload, Literal  # False during runtime
+from typing import TYPE_CHECKING, overload, List, Dict
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # False during runtime
+    from typing import TypeAlias, Literal
     from GimbalMonitor.rmGimbalMonitor_V2.ui.mainWindow import MainWindow
 
 
@@ -42,9 +43,9 @@ ICONS_DIR = Path(__file__).resolve().parent.parent.parent / "icons"
 
 _CONFIG_DIR = Path(__file__).resolve().parent.parent.parent /  "Config"
 
-SkipKeywords: TypeAlias = list[str]
-CategoryMap: TypeAlias = dict[str, dict[str, list[str]]]
-CategoryIcons: TypeAlias = dict[str, dict[str, str]]
+SkipKeywords: TypeAlias = List[str]
+CategoryMap: TypeAlias = Dict[str, Dict[str, List[str]]]
+CategoryIcons: TypeAlias = Dict[str, Dict[str, str]]
 
 # Hardcoded defaults used by "Reset to Default" actions.
 DEFAULT_SKIP_KEYWORDS: SkipKeywords = [
@@ -54,11 +55,11 @@ DEFAULT_SKIP_KEYWORDS: SkipKeywords = [
     "space", "follow",
     "knee", "toe", "ball", "footroll",
     "vis", "visibility", "guide",
-    "forehead", "jowl",
+    "forehead", "jowl", "chin",
     "face", "nose", "lip", "lid", "mouth", "cheek", "eyebrow",
     "brow", "ear", "eye", "iris", "jaw", "teeth", "tongue",
-    "sneer", "emote", "sync", "pinch", "angry", "happy", "sad",
-    "finger", "thumb", "index", "middle", "ring", "pinky", "elbow", "spline",
+    "sneer", "emote", "sync", "pinch", "angry", "happy", "sad", "frown", "smile",
+    "finger", "thumb", "index", "middle", "ring", "pinky", "elbow", "spline", "nostril"
 ]
 
 DEFAULT_CATEGORY_MAP: CategoryMap = {
@@ -66,15 +67,15 @@ DEFAULT_CATEGORY_MAP: CategoryMap = {
         "Head":  ["head", "neck"],
         "Torso": ["spine", "chest", "pelvis", "hip", "torso", "waist", "cog"],
         "Arms":  ["arm", "shoulder", "clavicle", "hand", "wrist", "scapula"],
-        "Legs":  ["leg", "thigh", "foot", "ankle", "heel"],
+        "Legs":  ["leg", "thigh", "foot", "ankle", "heel", "calf"],
         "Props": ["prop", "weapon", "cloth", "hair", "cape", "bag", "armor",
-                  "accessories", "blade", "necklace", "fabric"],
+                  "accessories", "blade", "necklace", "fabric", "staff"],
     },
     "Quadruped": {
         "Muzzle":    ["head", "neck"],
-        "Body":      ["spine", "chest", "hip", "torso", "waist", "cog"],
+        "Body":      ["spine", "chest", "hip", "torso", "waist", "cog", "belly"],
         "FrontLegs": ["shoulder", "shldr", "paw", "frontscapula", "legfront",
-                      "frontleg", "fore", "frontankle", "rollfront"],
+                      "frontleg", "fore", "frontankle", "rollfront", "frontbody"],
         "BackLegs":  ["rump", "hip", "backscapula", "legback", "backleg",
                       "hind", "backankle", "rollback"],
         "Tail":      ["tail"],
@@ -413,6 +414,11 @@ class ControlsContainer(QWidget):
     def clearControls(self) -> None:
         while self._flow.count(): # while count is not 0; 0 = False, everything else is True
             item = self._flow.takeAt(0) # items shift left by one index after each pop
+
+            if item is None:
+                logger.error("Item %s is none", item)
+                return
+
             widget = item.widget()
             widget.hide()
             widget.deleteLater()
@@ -645,7 +651,7 @@ class CategoryRowWidget(QFrame):
 #  ADD CATEGORY DIALOG
 # ══════════════════════════════════════════════════════════════════════════════
 
-class AddCategoryDialog(QDialog):
+class AddCategoryDialogue(QDialog):
     """
     Dialogue for creating a new category.
     Shows a live preview (icon + name) on the left, and set-icon / set-name
@@ -770,6 +776,7 @@ class AddCategoryDialog(QDialog):
         name = self._name_edit.text().strip()
         if not name:
             QMessageBox.warning(self, "Missing Name", "Please enter a category name.")
+            logger.warning("Category name is not entered")
             return
         self._result = (name, self._icon_path)
         self.accept()
@@ -783,7 +790,7 @@ class AddCategoryDialog(QDialog):
 #  ADD CONTROL DIALOG
 # ═══════════════════════════════════════════════════════════════════════════════
 
-class AddControlDialog(QDialog):
+class AddControlDialogue(QDialog):
     """
     Small dialogue for adding a single keyword to either the skip list or a
     chosen category.
@@ -792,7 +799,9 @@ class AddControlDialog(QDialog):
     Category mode   (categories=[...])  — returns (keyword, categoryName).
     """
 
-    def __init__(self, categories = None, parent = None) -> None:
+    def __init__(self,
+                 categories: list[str] | None = None,
+                 parent: ControlsEditWindow | None = None) -> None:
         super().__init__(parent)
         self.setWindowTitle("Add New Control")
         self.setFixedWidth(310)
@@ -843,16 +852,16 @@ class AddControlDialog(QDialog):
         # TODO Подивись що ще можна зробити з комбінаціями клавіш
 
     def _onAdd(self) -> None:
-        logger.debug("Selected \"Skip keyword\" reset to default.")
-        name: str = self._new_control_field.text().strip().lower()
-        if not name:
+        _newControl: str = self._new_control_field.text().strip().lower()
+        logger.debug("Added new control %s", _newControl)
+        if not _newControl:
             QMessageBox.warning(self, "Missing Keyword", "Please enter a keyword.")
             logger.warning("Please enter a keyword for the new control.")
             return
         if self._categories:
-            self._result = (name, self._category_combo.currentText())
+            self._result = (_newControl, self._category_combo.currentText())
         else:
-            self._result = name
+            self._result = _newControl
         self.accept()
 
     def _onCancel(self) -> None:
@@ -1001,7 +1010,7 @@ class ControlsEditWindow(QWidget):
         super().__init__(parent)
         self.setWindowTitle("Edit Controls")
         self.setWindowFlags(Qt.Tool | Qt.WindowCloseButtonHint | Qt.WindowTitleHint)
-        logger.info("Selected \"Edit Controls\" window.")
+        logger.debug("Selected \"Edit Controls\" window.")
 
         # Deep-copy from disk so edits are non-destructive until "Save All"
         self._skip_keywords: SkipKeywords = copy.deepcopy(self._loadConfig("skip_keywords.json"))
@@ -1029,18 +1038,19 @@ class ControlsEditWindow(QWidget):
     @staticmethod
     def _loadConfig(filename: str) -> CategoryMap | CategoryIcons | SkipKeywords | dict:
         """Load a JSON config file, falling back to defaults if unavailable."""
-        logger.debug("Attempting to load config file: %s", filename)
+        logger.info("Attempting to load config file: %s", filename)
         try:
             with open(_CONFIG_DIR / filename, "r", encoding="utf-8") as file:
                 data = json.load(file)
-                logger.debug("Successfully loaded config file: %s", filename)
+                logger.info("Successfully loaded config file: %s", filename)
                 return data
         except (FileNotFoundError, json.JSONDecodeError) as error:
-            logger.warning(
-                "Failed to load config '%s' due to error: %s. Falling back to default values.",
-                filename,
-                error
-            )
+            if filename != "category_icons.json":
+                logger.warning(
+                    "Failed to load config '%s' due to error: %s. Falling back to default values.",
+                    filename,
+                    error
+                )
             if filename == "skip_keywords.json":
                 return copy.deepcopy(DEFAULT_SKIP_KEYWORDS)
             elif filename == "category_map.json":
@@ -1050,11 +1060,11 @@ class ControlsEditWindow(QWidget):
     @staticmethod
     def _saveConfig(filename: str, data: CategoryMap | CategoryIcons | SkipKeywords):
         """Save data to a JSON config file."""
-        logger.debug("Attempting to save config file: %s", filename)
+        logger.info("Attempting to save config file: %s", filename)
         try:
             with open(_CONFIG_DIR / filename, "w", encoding="utf=8") as file:
                 json.dump(data, file, indent=4)  # 4 spaces = one Tub
-                logger.debug("Successfully saved config file: %s", filename)
+                logger.info("Successfully saved config file: %s", filename)
         except (FileNotFoundError, json.JSONDecodeError) as error:
             logger.warning(
                 "Failed to save config '%s' due to error: %s.",
@@ -1338,17 +1348,17 @@ class ControlsEditWindow(QWidget):
             QMessageBox.Yes | QMessageBox.No
         )
         if answer == QMessageBox.Yes:
-            logger.info("User selected \"Yes\"")
+            logger.debug("User selected \"Yes\"")
             self._skip_keywords = copy.deepcopy(DEFAULT_SKIP_KEYWORDS)
             self._rebuildSkip()
 
         if answer == QMessageBox.No:
-            logger.info("User selected \"No\"")
+            logger.debug("User selected \"No\"")
 
     def _addSkipControl(self) -> None:
         """Open a dialogue and add the typed keyword to the skip list."""
         logger.debug("Selected \"Skip keyword\" Add New Control option.")
-        dialog = AddControlDialog(categories=None, parent=self)
+        dialog = AddControlDialogue(categories=None, parent=self)
         if dialog.exec_() != QDialog.Accepted or not dialog.getResult():
             return
         keyword = dialog.getResult()
@@ -1378,34 +1388,49 @@ class ControlsEditWindow(QWidget):
 
     def _addCatControl(self) -> None:
         """Open a dialogue to choose a category and type a keyword, then add it."""
-        charMap    = self._category_map.get(self._current_char_type, {})
-        categories = list(charMap.keys())
+        charMap: dict[str, list[str]] = self._category_map.get(self._current_char_type, {})
+        categories: list[str] = list(charMap.keys())
         if not categories:
-            QMessageBox.information(
-                self, "No Categories",
-                "Add at least one category before adding controls."
-            )
+            logger.critical("No categories.")
             return
-        dialog = AddControlDialog(categories=categories, parent=self)
-        if dialog.exec_() != QDialog.Accepted or not dialog.getResult():
+
+        dialogue = AddControlDialogue(categories=categories, parent=self)
+        if dialogue.exec_() != QDialog.Accepted:
+            logger.debug("AddControlDialogue window rejected")
             return
-        keyword, catName = dialog.getResult()
+
+        result = dialogue.getResult() # Storing getResult() in the variable for type checking
+        if result is None:
+            logger.debug("AddControlDialogue's result is None")
+            return
+
+        if isinstance(result, str):
+            logger.debug("AddControlDialogue's result is wrong type string.")
+            return
+        keyword, catName = result
         if keyword in charMap.get(catName, []):
             QMessageBox.warning(
                 self, "Duplicate",
                 f'"{keyword}" already exists in the "{catName}" category.'
             )
+            logger.warning("%s already exists in the category.", keyword)
             return
         charMap.setdefault(catName, []).append(keyword)
         self._rebuildCategory()
 
     def _openAddCategory(self) -> None:
         """Open the Add New Category dialogue and integrate the result."""
-        dialog = AddCategoryDialog(self)
-        if dialog.exec_() != QDialog.Accepted or not dialog.getResult():
+        dialog = AddCategoryDialogue(self)
+        if dialog.exec_() != QDialog.Accepted:
+            logger.debug("AddCategoryDialogue window rejected")
             return
 
-        catName, icon_path = dialog.getResult()
+        result = dialog.getResult()
+        if result is None:
+            logger.debug("AddCategoryDialogue's result is None")
+            return
+
+        catName, icon_path = result
 
         # Guard against duplicate names
         charMap = self._category_map.setdefault(self._current_char_type, {})
@@ -1426,7 +1451,9 @@ class ControlsEditWindow(QWidget):
 
         self._rebuildCategory()
 
+    # noinspection PyMethodOverriding
     def closeEvent(self, event: QCloseEvent) -> None:
+        logger.debug("Closing \"Edit controls\" window %s", type(self).__name__)
         for scrollArea in (self._skipScrollableArea, self._categoryScrollArea):
             helper = getattr(scrollArea, "_dragScrollHelper", None)
             if helper is not None:

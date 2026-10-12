@@ -1,6 +1,7 @@
-
-
-
+"""
+messageSystem.py
+Controls gimbal monitor refresh timer.
+"""
 from __future__ import annotations
 
 import logging
@@ -100,10 +101,10 @@ class MessageSystem:
         # so we clear only those before building the new ones.
         for cbId in self.attribute_callback_Ids[2:]:
             OpenMaya2.MMessage.removeCallback(cbId) # Deleting callbacks IDs
-            logger.info(f"Callback removed from: {name}")
+            logger.debug(f"Callback removed from: {name}")
         del self.attribute_callback_Ids[2:] # Deleting entries from the dictionary
 
-        logger.info(f"Selection changed: {', '.join(name)}")
+        logger.debug(f"Selection changed: {', '.join(name)}")
         for ctrl in selection:
             # Skip anything that isn't a control tracked in the current tab
             if ctrl not in self.known_controls_dict.get(self.app.tabs.currentIndex(), set()):
@@ -158,5 +159,5 @@ class MessageSystem:
         Called once per timer tick from App.updateGimbalData.
         """
         if (time.time() - self.last_change_time) * 1000 > 50:
-            logger.info("Timer stop")
+            logger.debug("Timer stop")
             self.app.timer.stop()
