@@ -3,7 +3,9 @@
   <a href="README.md">English</a> |
   <strong>Українська</strong>
 </p>
-
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/remaniuk-mykyta)
+[![GitHub](https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white)](https://github.com/Drendika)
+[![ArtStation](https://img.shields.io/badge/ArtStation-131013?style=for-the-badge&logo=artstation&logoColor=white)](https://www.artstation.com/drendika)
 # Зміст
 
 - [Про мене](#про-мене)
@@ -36,7 +38,7 @@
 Детальний покроковий процес показано в цьому відео (посилання буде додано сюди після запису відео). 
 
 ### Особливості
-Ви можете відстежувати блокування осей (gimbal lock) для будь-якого елемента керування будь-якого персонажа в режимі реального часу. За потреби можна створювати власні налаштування для сортування та пропуску елементів керування.
+Ви можете відстежувати блокування осей (gimbal lock) для будь-якого контрола будь-якого персонажа в режимі реального часу. За потреби можна створювати власні налаштування для сортування та пропуску контролів.
 
 ### Сумісність
 
@@ -55,14 +57,14 @@
 
 ### Дорожня карта
 
-Плани розробки відстежуються в [дорожній карті](ROADMAP.md).
+Плани розробки відстежуються в [дорожній карті](ROADMAP.uk.md).
 
 ## Сніпети
 ### Hot reload
 #### Особливості
 Сніпет для швидкої розробки інтерфейсу за допомогою PySide. Hot reload видаляє всі модулі з `sys.modules`, а також закриває та видаляє вікно Qt.
 #### Сумісність
-Hot reload має працювати на Maya 2016 - 2027
+Hot reload має працювати на Maya 2016 - 2027.
 Перевірено та підтверджено працездатність на:
 - Maya 2022
 - Maya 2023

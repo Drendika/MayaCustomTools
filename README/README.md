@@ -3,8 +3,9 @@
   <strong>English</strong> |
   <a href="README.uk.md">Українська</a>
 </p>
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/remaniuk-mykyta)[![GitHub](https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white)](https://github.com/Drendika)[![ArtStation](https://img.shields.io/badge/ArtStation-13 narrow-131013?style=for-the-badge&logo=artstation&logoColor=white)](https://www.artstation.com/drendika)
-
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/remaniuk-mykyta)
+[![GitHub](https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white)](https://github.com/Drendika)
+[![ArtStation](https://img.shields.io/badge/ArtStation-131013?style=for-the-badge&logo=artstation&logoColor=white)](https://www.artstation.com/drendika)
 
 # Table of Contents
 
