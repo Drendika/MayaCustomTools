@@ -44,6 +44,7 @@ It analyses character controls using their actual rotation orders and shows how 
 - Display the current rotation order of each control.
 - Visualise gimbal-lock percentage with a colour-coded progress bar.
 - Highlight high-risk controls with an additional warning indicator.
+<img width="800" height="450" alt="1" src="https://github.com/user-attachments/assets/81998ebb-482e-4de7-ba6c-2a088efa7ceb" /><img width="800" height="390" alt="11" src="https://github.com/user-attachments/assets/424a5d8e-7456-4cfe-ab94-ffa384744ed9" />
 
 #### Character and control organisation
 - Automatically groups controls into categories such as Head, Torso, Arms, Legs and others.
@@ -57,11 +58,13 @@ It analyses character controls using their actual rotation orders and shows how 
 - Move keywords between categories using drag and drop.
 - Assign custom icons to control categories.
 - Configuration is stored between Maya sessions.
+<img width="800" height="390" alt="22" src="https://github.com/user-attachments/assets/af294b24-280f-4c3a-a9e5-17dbe3b64fdf" />
 
 #### Updates
 - Automatically checks GitHub for new rmGimbalMonitor releases on startup.
 - Updates can also be checked manually from **Help → Check for Updates**.
 - Individual versions can be skipped if the user does not want to be reminded again.
+<img width="800" height="390" alt="33" src="https://github.com/user-attachments/assets/929d49c6-c057-4a45-b150-005640e7ff4c" />
 
 ### Compatibility
 
@@ -74,11 +77,11 @@ Tested and confirmed working on:
 
 ### Installation
 1) Go to [Releases](https://github.com/Drendika/MayaCustomTools/releases).
-2) DDownload the latest release archive (`rmGimbalMonitor_V2.zip`).
+2) Download the latest release archive (`rmGimbalMonitor_V2.zip`).
 3) Extract the files to the desktop.
 4) Drag and drop the file `Drug&Drop Install.py` into Maya.
 5) A new rmGimbalMonitor icon should appear on the active Maya shelf.
-The exact step-by-step process is shown in this video (Як запишу відео то вставлю сюди посилання). 
+The exact step-by-step process is shown in this video (Link goes here). 
 
 ### Known Issues
 - Incorrect display of custom icons that are less than 32x32
