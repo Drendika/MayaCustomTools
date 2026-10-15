@@ -34,7 +34,7 @@ As of today, you can find here:
 
 # Tools
 <a name="rmgimbalmonitor"></a>
-## rmGimbalMonitor  <img width="32" height="32" alt="Logo_GMv2_GitHubIcon" src="https://github.com/user-attachments/assets/25303043-e6f7-48d4-8001-b6c80f172459" />
+## rmGimbalMonitor <img width="32" height="32" alt="Logo_GMv2_GitHubIcon" src="https://github.com/user-attachments/assets/25303043-e6f7-48d4-8001-b6c80f172459" />
 
 **rmGimbalMonitor** is a real-time gimbal-lock monitoring and analysis tool for Autodesk Maya.
 
@@ -81,8 +81,7 @@ Tested and confirmed working on:
 2) Download the latest release archive (`rmGimbalMonitor_V2.zip`).
 3) Extract the files to the desktop.
 4) Drag and drop the file `Drug&Drop Install.py` into Maya.
-5) A new rmGimbalMonitor icon should appear on the active Maya shelf.
-The exact step-by-step process is shown in this video (Link goes here). 
+5) A new rmGimbalMonitor icon should appear on the active Maya shelf <img width="32" height="32" alt="Logo_GMv2_GitHubIcon" src="https://github.com/user-attachments/assets/25303043-e6f7-48d4-8001-b6c80f172459" />.
 
 ### Known Issues
 - Incorrect display of custom icons that are less than 32x32
