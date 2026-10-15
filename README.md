@@ -28,12 +28,13 @@ Hi! My name is Mykyta aka Drendika. Here, I'm sharing all of my tools for Autode
 I'm mainly focusing on tools for animators and technical animators/riggers.
 As of today, you can find here:
 - [rmGimbalMonitor](#rmgimbalmonitor)
-- [Hot reload](#hot-reload)
+- [Hot Reload](#hot-reload)
 
 
 
 # Tools
-## rmGimbalMonitor
+<a name="rmgimbalmonitor"></a>
+## rmGimbalMonitor  <img width="32" height="32" alt="Logo_GMv2_GitHubIcon" src="https://github.com/user-attachments/assets/25303043-e6f7-48d4-8001-b6c80f172459" />
 
 **rmGimbalMonitor** is a real-time gimbal-lock monitoring and analysis tool for Autodesk Maya.
 
@@ -44,7 +45,7 @@ It analyses character controls using their actual rotation orders and shows how 
 - Display the current rotation order of each control.
 - Visualise gimbal-lock percentage with a colour-coded progress bar.
 - Highlight high-risk controls with an additional warning indicator.
-<img width="800" height="450" alt="1" src="https://github.com/user-attachments/assets/81998ebb-482e-4de7-ba6c-2a088efa7ceb" /><img width="800" height="390" alt="11" src="https://github.com/user-attachments/assets/424a5d8e-7456-4cfe-ab94-ffa384744ed9" />
+<img width="800" height="390" alt="Image" src="https://github.com/user-attachments/assets/2550632e-3926-4a0f-a04d-50080b1014f4" />
 
 #### Character and control organisation
 - Automatically groups controls into categories such as Head, Torso, Arms, Legs and others.
@@ -93,7 +94,8 @@ Development plans are tracked in the [Roadmap](ROADMAP.md).
 
 
 ## Snippets
-### Hot reload
+<a name="hot-reload"></a>
+### Hot reload <img width="32" height="32" alt="HotReload_SmallIcon" src="https://github.com/user-attachments/assets/8a7507a4-0e58-499e-ae96-0bc2c150ebf6" />
 #### Features
 Code snippet for rapid UI development using PySide. Hot reload deletes all modules from `sys.modules` and closes+deletes Qt window.
 

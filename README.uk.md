@@ -1,3 +1,4 @@
+
 <p align="center">
   <a href="README.md">English</a> |
   <strong>Українська</strong>
@@ -31,7 +32,8 @@
 
 
 # Інструменти
-## rmGimbalMonitor
+<a name="rmgimbalmonitor"></a>
+## rmGimbalMonitor  <img width="32" height="32" alt="Logo_GMv2_GitHubIcon" src="https://github.com/user-attachments/assets/25303043-e6f7-48d4-8001-b6c80f172459" />
 
 **rmGimbalMonitor** — це інструмент для відстеження блокування осей (gimbal lock) у реальному часі для Autodesk Maya.
 
@@ -44,7 +46,7 @@
 - Кольорова індикація рівня блокування осей із візуальною шкалою прогресу.
 - Виділення елементів із високим ризиком блокування додатковим попереджувальним індикатором (знаком оклику).
 - Оновлення даних у відповідь на зміни в сцені Maya, зокрема обертання контролів та переміщення по часовій шкалі.
-<img width="800" height="390" alt="11" src="https://github.com/user-attachments/assets/c4d579e4-a57b-4fb8-b73c-83ec76468673" />
+<img width="800" height="390" alt="Image" src="https://github.com/user-attachments/assets/2550632e-3926-4a0f-a04d-50080b1014f4" />
 
 #### Організація персонажів та елементів керування
 - Автоматичне групування контролів за категоріями (наприклад: голова, тулуб, руки, ноги тощо).
@@ -58,13 +60,13 @@
 - Переміщення ключових слів між категоріями за допомогою функції перетягування (drag-and-drop).
 - Призначення власних іконок категоріям контролів.
 - Збереження налаштувань між сеансами роботи в Maya.
-<img width="800" height="390" alt="22" src="https://github.com/user-attachments/assets/a0bbbf20-4e67-4ee7-afb5-8a1c4a6dcdab" />
+<img width="800" height="390" alt="22" src="https://github.com/user-attachments/assets/af294b24-280f-4c3a-a9e5-17dbe3b64fdf" />
 
 #### Оновлення
 - Автоматична перевірка наявності нових версій rmGimbalMonitor на GitHub під час запуску програми.
 - Можливість перевірки оновлень вручну через меню **Help → Check for Updates**.
 - Можливість пропуску окремих версій, якщо користувач не бажає отримувати нагадування про них у майбутньому.
-<img width="800" height="390" alt="33" src="https://github.com/user-attachments/assets/98b93d4c-7b52-441b-ab13-516c4dc5a72e" />
+<img width="800" height="390" alt="33" src="https://github.com/user-attachments/assets/929d49c6-c057-4a45-b150-005640e7ff4c" />
 
 ### Сумісність
 Перевірено та підтверджено працездатність на:
@@ -93,7 +95,7 @@
 Плани розробки відстежуються в [дорожній карті](ROADMAP.uk.md).
 
 ## Сніпети
-### Hot reload
+### Hot reload <img width="32" height="32" alt="HotReload_SmallIcon" src="https://github.com/user-attachments/assets/8a7507a4-0e58-499e-ae96-0bc2c150ebf6" />
 #### Особливості
 Сніпет для швидкої розробки інтерфейсу за допомогою PySide. Hot reload видаляє всі модулі з `sys.modules`, а також закриває та видаляє вікно Qt.
 #### Сумісність
