@@ -84,6 +84,7 @@ Tested and confirmed working on:
 5) A new rmGimbalMonitor icon should appear on the active Maya shelf <img width="32" height="32" alt="Logo_GMv2_GitHubIcon" src="https://github.com/user-attachments/assets/25303043-e6f7-48d4-8001-b6c80f172459" />.
 
 ### Known Issues
+- All character controls must be located within the hierarchy of the first selected object. Some rigs use a structure of `Main Control → Parent Constraint → Remaining Controls` rather than `Main Control → Remaining Controls (parented to the main control)` If you do not see the controls in the table, select the root group of the control system in the `Outliner` instead of `Main Control`.
 - Incorrect display of custom icons that are less than 32x32
 - An overly long category name does not fit in the column of the tables and Edit Controls.
 - After adding a custom icon, it is copied to the `icons` folder, yet the system still uses the icon originally selected by the user from its original location rather than the one in the `icons` folder.
