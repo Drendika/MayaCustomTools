@@ -33,7 +33,7 @@
 
 # Інструменти
 <a name="rmgimbalmonitor"></a>
-## rmGimbalMonitor  <img width="32" height="32" alt="Logo_GMv2_GitHubIcon" src="https://github.com/user-attachments/assets/25303043-e6f7-48d4-8001-b6c80f172459" />
+## rmGimbalMonitor <img width="32" height="32" alt="Logo_GMv2_GitHubIcon" src="https://github.com/user-attachments/assets/25303043-e6f7-48d4-8001-b6c80f172459" />
 
 **rmGimbalMonitor** — це інструмент для відстеження блокування осей (gimbal lock) у реальному часі для Autodesk Maya.
 
@@ -81,8 +81,7 @@
 2) Завантажте останню версію інструмента(rmGimbalMonitor_V2.zip).
 3) Розпаковуйте файли на робочий стіл.
 4) Перетягніть файл `Drug&Drop Install.py` у вікно Maya.
-5) На активній полиці має з’явитися новий значок rmGimbalMonitor.
-Детальний покроковий процес показано в цьому відео (посилання буде додано сюди після запису відео). 
+5) На активній полиці має з’явитися новий значок rmGimbalMonitor <img width="32" height="32" alt="Logo_GMv2_GitHubIcon" src="https://github.com/user-attachments/assets/25303043-e6f7-48d4-8001-b6c80f172459" />.
 
 ### Відомі проблеми
 
@@ -95,6 +94,7 @@
 Плани розробки відстежуються в [дорожній карті](ROADMAP.uk.md).
 
 ## Сніпети
+<a name="hot-reload"></a>
 ### Hot reload <img width="32" height="32" alt="HotReload_SmallIcon" src="https://github.com/user-attachments/assets/8a7507a4-0e58-499e-ae96-0bc2c150ebf6" />
 #### Особливості
 Сніпет для швидкої розробки інтерфейсу за допомогою PySide. Hot reload видаляє всі модулі з `sys.modules`, а також закриває та видаляє вікно Qt.
